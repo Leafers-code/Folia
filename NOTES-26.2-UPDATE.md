@@ -62,3 +62,27 @@ headroom (live server uses 12G heap). `swapoff /swapfile-folia && rm /swapfile-f
 - **World upgrade to 26.2 is ONE-WAY** — test only on a throwaway world copy.
 - Deploying an unofficial engine fork to live player/economy data = serious data-safety call;
   requires extensive staged load-testing first.
+
+## UPDATE (2026-07-01, run 4): engine patches REACHED — very promising
+`applyAllPatches` now gets all the way through: downloads + **decompiles MC 26.2**, applies
+all Paper patches, runs Folia setup, and **applies Folia's Minecraft SOURCE + FILE patches
+cleanly**. It fails only at `applyMinecraftFeaturePatches` on the big one:
+```
+Applying: Region Threading Base
+error: invalid object ... for 'ca/spottedleaf/moonrise/paper/PaperHooks.java'
+error: Repository lacks necessary blobs to fall back on 3-way merge.
+```
+i.e. Folia's Region-Threading-Base modifies Paper's **Moonrise** chunk-system hook
+`PaperHooks.java`, which 26.2 changed, so `git am` can't 3-way merge. This is applied via
+**git am** in the paperweight work tree. Resume:
+```
+# in the folia-server minecraft work git repo (paperweight prints the path):
+git am --show-current-patch=diff        # see what Region-Threading-Base wants in PaperHooks.java
+# hand-apply Folia's changes to 26.2's PaperHooks.java (+ any further conflicts as am continues)
+git add -A && git am --continue         # repeat until the series applies
+./gradlew rebuildPatches                # save resolved patches back
+./gradlew createMojmapPaperclipJar      # build the jar
+```
+Then the concurrentutil→leafpile compile migration + any 26.2 API compile fixes.
+**Verdict: tractable (no wholesale conflict) but a focused multi-session job — the region
+engine ↔ Moonrise integration must be rebased by hand with concurrency care.**
