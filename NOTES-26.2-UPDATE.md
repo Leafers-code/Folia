@@ -86,3 +86,35 @@ git add -A && git am --continue         # repeat until the series applies
 Then the concurrentutil→leafpile compile migration + any 26.2 API compile fixes.
 **Verdict: tractable (no wholesale conflict) but a focused multi-session job — the region
 engine ↔ Moonrise integration must be rebased by hand with concurrency care.**
+
+## UPDATE (run 8): 3-WAY MERGE WORKING — engine patches now merge onto 26.2
+The blocker chain is solved. Two fixes were needed beyond `oldPaperCommit`:
+1. **jgit can't fetch the old base commit** (`Short read of block` in shallow fetch). FIX:
+   full-clone Paper to a local mirror `/home/admin/paper-mirror`, then make the old commit
+   locally reachable — `git -C <fork> fetch /home/admin/paper-mirror <oldPaperCommit>`.
+   (paperweight's oldPaper repo fetches from the fork as origin.)
+2. **feature-patch `git am -3` lacks the OLD minecraft-sources blobs** (e.g. PaperHooks.java
+   blob 4a3f07d) → can't 3-way. FIX: expose the old source object stores via env
+   `GIT_ALTERNATE_OBJECT_DIRECTORIES` (system git honours it), pointing at (all under
+   folia-server/.gradle/caches/paperweight):
+   `oldPaper/<commit>/paper-server/src/minecraft/java/.git/objects` +
+   `mache/base/sources/.git/objects` + (root) `.gradle/.../server-work/paper/file/.../java/.git/objects`.
+
+### Reproduce the 3-way-merge state (gets to the 123 conflicts)
+```
+cd /home/admin/folia-fork; export JAVA_HOME=/usr/lib/jvm/temurin-25-jdk-amd64
+rm -f folia-server/build.gradle.kts folia-api/build.gradle.kts
+git fetch /home/admin/paper-mirror b4682bfef616ac62e73cc96046dacdf4a6f53eeb   # old base reachable
+# first run builds the oldPaper/mache object stores; then set alternates and re-run:
+export GIT_ALTERNATE_OBJECT_DIRECTORIES="$PWD/folia-server/.gradle/caches/paperweight/oldPaper/b4682bfef616ac62e73cc96046dacdf4a6f53eeb/paper-server/src/minecraft/java/.git/objects:$PWD/folia-server/.gradle/caches/paperweight/mache/base/sources/.git/objects:$PWD/.gradle/caches/paperweight/upstreams/server-work/paper/file/src/minecraft/java/.git/objects"
+./gradlew applyAllPatches --no-daemon
+# -> Region-Threading-Base 3-way merges: git am pauses with CONFLICTs in ~59 files (123 regions)
+```
+
+### Remaining work to a building jar (the real grind)
+1. Resolve 123 conflict regions in folia-server/src/minecraft/java (Folia region-threading vs
+   26.2 changes — take Folia's scheduler-wrapping, adapted to 26.2's restructures).
+2. `git add -A && git am --continue` (repeat for feature patches 0002-0008).
+3. `./gradlew rebuildPatches` (saves resolved patches back into the repo — DURABLE point).
+4. `./gradlew createMojmapPaperclipJar` -> fix compile errors: concurrentutil→leafpile migration
+   + any 26.2 API changes. Iterate until it builds.
