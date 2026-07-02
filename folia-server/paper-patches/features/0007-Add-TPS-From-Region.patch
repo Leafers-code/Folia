@@ -103,3 +103,16 @@ index b19c1f90adf5ef4824fb6f106b9afa733d4ee7ae..8804538cacbfcae1430faf8d01b40c2c
              ca.spottedleaf.moonrise.common.util.TickThread.ensureTickThread(serverWorld, position, "Cannot modify world asynchronously");
          }
          // Folia end - region threading
+diff --git a/src/main/java/org/bukkit/craftbukkit/inventory/CraftItemStack.java b/src/main/java/org/bukkit/craftbukkit/inventory/CraftItemStack.java
+index de0e88caf608562cf004877ac693bfe4130598a6..1fb035f632b07913e2a611aa45e0972e8affb782 100644
+--- a/src/main/java/org/bukkit/craftbukkit/inventory/CraftItemStack.java
++++ b/src/main/java/org/bukkit/craftbukkit/inventory/CraftItemStack.java
+@@ -161,7 +161,7 @@ public final class CraftItemStack extends ItemStack {
+     /**
+      * Copies the NMS stack to return as a strictly-Bukkit stack
+      */
+-    private static ItemStack asBukkitCopy(net.minecraft.world.item.ItemStack original) {
++    public static ItemStack asBukkitCopy(net.minecraft.world.item.ItemStack original) { // Folia - plugin compat: keep this reflectable (cloud/Geyser look it up via getMethod)
+         // no such thing as a "strictly-Bukkit stack" anymore
+         // we copy the stack since it should be a complete copy not a mirror
+         return asCraftMirror(original.copy());
