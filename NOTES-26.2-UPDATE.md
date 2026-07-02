@@ -225,3 +225,30 @@ Stage 2 (plugins): custom plugins rebuild against **folia-api 26.2 + Adventure 5
 3. **One-way world upgrade** validated on a throwaway copy (data-safety — NOT reversible).
 4. Prod deploy: backup + rollback plan + low-traffic + owner approval.
 Build artifacts: folia-paperclip jar in folia-server/build/libs/; custom 26.2 jars in ~/folia-26.2-plugins/.
+
+## PROD-READINESS run 2 (2026-07-02) — plugin ecosystem RESOLVED as far as upstream allows
+RESOLVED / working on Folia 26.2 (empirically test-loaded):
+- 15 custom plugins + Sprout (rebuilt vs folia-api 26.2 + Adventure 5.2.0) → ~/folia-26.2-plugins/
+- voicechat **2.6.20** (folia+26.2, fetched Modrinth), floodgate (latest GeyserMC CDN, boots OK)
+- LuckPerms 5.5.55, ProtocolLib 5.4.0, GrimAC 2.3.74, SkinsRestorer, TAB 6.0.3, WorldEdit 7.4.3,
+  WorldGuard 7.0.17, Chunky, Sleeper, SyncmaticaPaper, TradeCycle — all enable on 26.2.
+
+HARD BLOCKERS — no Folia/26.2 upstream build exists (verified), can't be fetched:
+- **worlds (TheNextLvl) — CRITICAL (hub/creative/pvp).** 4.3.0-pre1 has a 26.2 impl but it THROWS
+  `Folia is not supported in this version`. Worlds stores registry in plugins/Worlds/worlds.dat and
+  loads the leafhost dimensions (world/dimensions/leafhost/{hub,creative,pvp}, 56M, vanilla multi-dim
+  layout, NO per-dim level.dat) via per-MC-version NMS. No Folia-26.2 impl. Workaround = custom
+  Folia-26.2 dimension-loader OR migrate the 3 dims to standalone worlds + load via WorldCreator
+  (data-migration, needs owner sign-off + throwaway-copy test).
+- **Geyser 2.10.1 — Bedrock crossplay.** Enable-crashes on 26.2 (bundled `cloud` cmd lib does
+  CraftBukkit reflection that broke on 26.2 API). No 26.2 Geyser released. Not fork-able by us →
+  deploying now means NO Bedrock crossplay until GeyserMC ships 26.2. (floodgate itself is fine.)
+DROPPABLE (no 26.2 build; non-core): StackMob (mob-stack), InventoryStacks (item-stack, enable err).
+
+STILL PENDING (owner-gated): full dev-stack test w/ world COPY; **one-way 26.1.2->26.2 world upgrade**
+(irreversible — throwaway-copy validation first); backed-up prod deploy w/ rollback.
+
+### VERDICT: engine + our plugins are ready; FULL prod-readiness is blocked on upstream (Worlds
+### Folia-26.2, Geyser 26.2) + the irreversible world upgrade — i.e. it needs either upstream
+### releases, or a decision to do custom worlds work + deploy without crossplay. Not a solo-completable
+### state today without those calls.
