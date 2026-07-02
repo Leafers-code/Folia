@@ -304,3 +304,13 @@ Geyser enables on 26.2, server reaches Done, clean shutdown, 0 errors (the only 
 => EVERY plugin blocker is now resolved (worlds=datapack, StackMob=Herd, InventoryStacks=Condense,
 voicechat/floodgate fetched, Geyser fixed). Sole remaining gate = the one-way world upgrade + cutover
 (owner-triggered). Next: dev dress rehearsal (world COPY -> load on 26.2 = upgrade -> full stack).
+
+## PROD-READY ACHIEVED (2026-07-02) — full dress rehearsal PASSED on real prod-world copy
+R1 (world upgrade): copied the real 7.1G prod world, booted on 26.2 + datapack -> Done(41.6s), all 6
+worlds load (survival overworld/nether/end + leafhost hub/creative/pvp), DataConverter ran the
+26.1.2->26.2 upgrade, 0 crashes/corruption. R2 (full stack): all 32 plugins ENABLE together on the
+upgraded world (custom + third-party incl fixed Geyser/floodgate/voicechat + Herd/Condense/Sprout);
+WorldGuard already regions world_leafhost_hub (datapack worlds live). Cutover runbook +rollback:
+/home/admin/folia-26.2-deploy/CUTOVER-RUNBOOK.md. Deploy package: /home/admin/folia-26.2-deploy/.
+=> Folia 26.2 is PROD-READY (validated deployable). Final cutover is owner-triggered (one-way world
+upgrade on live data). No remaining technical blockers.
