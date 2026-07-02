@@ -270,3 +270,26 @@ Remaining third-party gaps + plan ("build our own if it doesn't work"):
 - **Geyser (Bedrock crossplay): the one genuine exception — NOT solo-buildable** (full Bedrock<->Java
   protocol, one of the largest MC projects). floodgate works. Path = imminent upstream Geyser 26.2
   (they track MC fast) + re-test newer builds. Crossplay is a hard-req → this gates go-live regardless.
+
+## PROD-READINESS run 4 — "build your own" applied; deploy fully prepped
+Per owner directive "if a plugin doesn't work just build your own":
+- worlds → BUILT the datapack solution (run 3). ✅
+- StackMob (mob-stack, no 26.2 build) → BUILT **Herd** (custom Folia mob-stacker, PDC count + display
+  name + region-safe merge/respawn, loot-integrity-safe). Loads+enables on 26.2. ✅
+- InventoryStacks (item-stack, zip-err on 26.2) → BUILT **Condense** (custom /stack, greedy inventory
+  merge, Folia-safe). Built+staged. ✅
+Sources in leafhost-plugins/{Herd,Condense}. (LeafWorldLoader was superseded by the datapack — Folia
+blocks Bukkit createWorld.)
+
+DEPLOY PACKAGE (turnkey) at /home/admin/folia-26.2-deploy/: leafhost-datapack/ + plugins/ (20 = 16
+custom incl Herd/Condense/Sprout + floodgate + voicechat-2.6.20). At deploy, keep prod's working
+third-party as-is (LuckPerms/ProtocolLib/GrimAC/SkinsRestorer/TAB/WorldEdit/WorldGuard/Chunky/Sleeper/
+SyncmaticaPaper/TradeCycle — all verified enable on 26.2), REMOVE worlds+StackMob+InventoryStacks,
+add the datapack, sed-rename leafhost_X->world_leafhost_X in Verdant/Grove/Bramble/Roots/Compass configs
++ Verdant player ymls.
+
+### THE ONE REMAINING BLOCKER = Geyser (Bedrock crossplay). Genuinely NOT "buildable our own" (full
+### Bedrock<->Java protocol = one of the largest MC projects). 2.10.1 enable-crashes on 26.2 (bundled
+### `cloud` cmd-lib reflection, not the protocol core). floodgate works. Path = upstream Geyser 26.2
+### (imminent; GeyserMC tracks MC fast) — re-test new builds. Crossplay is a hard-req => gates go-live.
+### Everything else is prod-ready & staged. Also still owner-gated: one-way 26.1.2->26.2 world upgrade.
