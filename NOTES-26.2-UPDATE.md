@@ -293,3 +293,14 @@ add the datapack, sed-rename leafhost_X->world_leafhost_X in Verdant/Grove/Bramb
 ### `cloud` cmd-lib reflection, not the protocol core). floodgate works. Path = upstream Geyser 26.2
 ### (imminent; GeyserMC tracks MC fast) — re-test new builds. Crossplay is a hard-req => gates go-live.
 ### Everything else is prod-ready & staged. Also still owner-gated: one-way 26.1.2->26.2 world upgrade.
+
+## PROD-READINESS run 5 — CROSSPLAY (Geyser) FIXED. All plugin blockers cleared.
+Geyser 2.10.1 enable-crash on 26.2 ROOT CAUSE: its bundled cloud cmd-lib reflects
+`CraftItemStack.asBukkitCopy(net.minecraft.world.item.ItemStack)` via getMethod (public-only), but 26.2
+made that overload **private** (added asBukkitCopy(ItemInstance)). FIX (in our fork, benefits ALL
+cloud-based plugins): make that overload **public** again (paper-patches/features/0007). VERIFIED:
+Geyser enables on 26.2, server reaches Done, clean shutdown, 0 errors (the only log error is
+"Address already in use :19132" = prod holds the port in the test; free on deploy). floodgate already OK.
+=> EVERY plugin blocker is now resolved (worlds=datapack, StackMob=Herd, InventoryStacks=Condense,
+voicechat/floodgate fetched, Geyser fixed). Sole remaining gate = the one-way world upgrade + cutover
+(owner-triggered). Next: dev dress rehearsal (world COPY -> load on 26.2 = upgrade -> full stack).
