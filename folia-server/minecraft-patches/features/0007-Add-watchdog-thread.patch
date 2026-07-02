@@ -1188,7 +1188,7 @@ index c41b09df73acaaeb8014fab1575cd6c06ca09428..fd4dcddea99e454a24d87d4d6af35a5a
  
      protected void addEntity(final Entity entity) {
 diff --git a/net/minecraft/server/level/PlayerSpawnFinder.java b/net/minecraft/server/level/PlayerSpawnFinder.java
-index d28b88b902214dd6f8221b3908260d44953f30ef..0a2f0d2ec75153a39cb5325161243df7f9d06d74 100644
+index d28b88b902214dd6f8221b3908260d44953f30ef..ca2db52c27a45d482baeaf67bfab36b0d289a666 100644
 --- a/net/minecraft/server/level/PlayerSpawnFinder.java
 +++ b/net/minecraft/server/level/PlayerSpawnFinder.java
 @@ -26,7 +26,7 @@ import net.minecraft.world.phys.Vec3;
@@ -1217,7 +1217,7 @@ index d28b88b902214dd6f8221b3908260d44953f30ef..0a2f0d2ec75153a39cb5325161243df7
                      if (throwable == null) {
                          try {
                              Optional<Vec3> spawnPos = candidateChecker.get();
-@@ -145,34 +141,22 @@ public class PlayerSpawnFinder {
+@@ -145,45 +141,33 @@ public class PlayerSpawnFinder {
                          details.setDetail("Progress", () -> candidateIndex + " out of " + this.candidateCount);
                          this.finishedFuture.completeExceptionally(new ReportedException(report));
                      }
@@ -1229,7 +1229,7 @@ index d28b88b902214dd6f8221b3908260d44953f30ef..0a2f0d2ec75153a39cb5325161243df7
      protected static @Nullable BlockPos getLevelRespawnPos(final ServerLevel level, final int x, final int z) {
          boolean caveWorld = level.dimensionType().hasCeiling();
 -        net.minecraft.world.level.chunk.ChunkAccess chunk = level.moonrise$getChunkTaskScheduler().syncLoadNonFull(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(z), net.minecraft.world.level.chunk.status.ChunkStatus.SPAWN); // Folia - region threading
-+        LevelChunk chunk = level.getChunk(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(z));
++        net.minecraft.world.level.chunk.ChunkAccess chunk = ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel) level).moonrise$getChunkTaskScheduler().syncLoadNonFull(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(z), net.minecraft.world.level.chunk.status.ChunkStatus.SPAWN); // Folia - region threading - load chunk region-safely instead of level.getChunk
          int topY = caveWorld ? level.getChunkSource().getGenerator().getSpawnHeight(level) : chunk.getHeight(Heightmap.Types.MOTION_BLOCKING, x & 15, z & 15);
          if (topY < level.getMinY()) {
              return null;
@@ -1259,6 +1259,19 @@ index d28b88b902214dd6f8221b3908260d44953f30ef..0a2f0d2ec75153a39cb5325161243df7
  
          BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
  
+         for (int y = topY + 1; y >= level.getMinY(); y--) {
+             pos.set(x, y, z);
+-            BlockState blockState = level.getBlockState(pos);
++            BlockState blockState = chunk.getBlockState(pos); // Folia - region threading - read from the loaded chunk
+             if (!blockState.getFluidState().isEmpty()) {
+                 break;
+             }
+ 
+-            if (Block.isFaceFull(blockState.getCollisionShape(level, pos), Direction.UP)) {
++            if (Block.isFaceFull(blockState.getCollisionShape(chunk, pos), Direction.UP)) { // Folia - region threading
+                 return pos.above().immutable();
+             }
+         }
 diff --git a/net/minecraft/server/level/ServerChunkCache.java b/net/minecraft/server/level/ServerChunkCache.java
 index b75a79c726e7713d18115bc18c99d5874907c9a7..3b5af8f7d99f91de1f316dd6c49459b4ee4c4453 100644
 --- a/net/minecraft/server/level/ServerChunkCache.java
