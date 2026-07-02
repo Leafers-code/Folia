@@ -183,3 +183,1053 @@ index 4139d6c7b2164c233d71b0d1289ae3f6717e44ff..e2f90ec873982d0e476b685c2f489347
  
          private ConcreteRegionTickHandle(final TickRegionData region, final long start) {
              super(region, start);
+diff --git a/net/minecraft/server/commands/EnchantCommand.java b/net/minecraft/server/commands/EnchantCommand.java
+index 43a28ea2b1f476020c5e95546c1bf562fd9edc09..35ee89ffd2dd1a803196e06bdd86e79fa5193f03 100644
+--- a/net/minecraft/server/commands/EnchantCommand.java
++++ b/net/minecraft/server/commands/EnchantCommand.java
+@@ -63,89 +63,52 @@ public class EnchantCommand {
+         );
+     }
+ 
+-    // Folia start - region threading
+-    private static void sendMessage(CommandSourceStack src, CommandSyntaxException ex) {
+-        src.sendFailure((Component)ex.getRawMessage());
+-    }
+-    // Folia end - region threading
+-
+     private static int enchant(
+         final CommandSourceStack source, final Collection<? extends Entity> targets, final Holder<Enchantment> enchantmentHolder, final int level
+     ) throws CommandSyntaxException {
+         Enchantment enchantment = enchantmentHolder.value();
+         if (level > enchantment.getMaxLevel()) {
+             throw ERROR_LEVEL_TOO_HIGH.create(level, enchantment.getMaxLevel());
+-        } else {
+-            final java.util.concurrent.atomic.AtomicInteger changed = new java.util.concurrent.atomic.AtomicInteger(0); // Folia - region threading
+-            final java.util.concurrent.atomic.AtomicInteger count = new java.util.concurrent.atomic.AtomicInteger(targets.size()); // Folia - region threading
+-            final java.util.concurrent.atomic.AtomicReference<Component> possibleSingleDisplayName = new java.util.concurrent.atomic.AtomicReference<>(); // Folia - region threading
++        }
++
++        int success = 0;
+ 
+-            for (Entity entity : targets) {
+-                if (entity instanceof LivingEntity target) {
+-                    // Folia start - region threading
+-                    entity.getBukkitEntity().taskScheduler.schedule((LivingEntity nmsEntity) -> {
+-                        try {
+-                            ItemStack item = target.getMainHandItem();
+-                            if (!item.isEmpty()) {
+-                                if (enchantment.canEnchant(item)
+-                                    && EnchantmentHelper.isEnchantmentCompatible(EnchantmentHelper.getEnchantmentsForCrafting(item).keySet(), enchantmentHolder)) {
+-                                    item.enchant(enchantmentHolder, level);
+-                                    possibleSingleDisplayName.set(target.getDisplayName());
+-                                    changed.incrementAndGet();
+-                                } else if (targets.size() == 1) {
+-                                    throw ERROR_INCOMPATIBLE.create(item.getHoverName().getString());
+-                                }
+-                            } else if (targets.size() == 1) {
+-                                throw ERROR_NO_ITEM.create(target.getName().getString());
+-                            }
+-                        } catch (final CommandSyntaxException exception) {
+-                            sendMessage(source, exception);
+-                            return; // don't send feedback twice
+-                        }
+-                        sendFeedback(source, enchantmentHolder, level, possibleSingleDisplayName, count, changed);
+-                    }, ignored -> sendFeedback(source, enchantmentHolder, level, possibleSingleDisplayName, count, changed), 1L);
++        for (Entity entity : targets) {
++            if (entity instanceof LivingEntity target) {
++                ItemStack item = target.getMainHandItem();
++                if (!item.isEmpty()) {
++                    if (enchantment.canEnchant(item)
++                        && EnchantmentHelper.isEnchantmentCompatible(EnchantmentHelper.getEnchantmentsForCrafting(item).keySet(), enchantmentHolder)) {
++                        item.enchant(enchantmentHolder, level);
++                        success++;
++                    } else if (targets.size() == 1) {
++                        throw ERROR_INCOMPATIBLE.create(item.getHoverName().getString());
++                    }
+                 } else if (targets.size() == 1) {
+-                    throw ERROR_NOT_LIVING_ENTITY.create(entity.getName().getString());
+-                } else {
+-                    sendFeedback(source, enchantmentHolder, level, possibleSingleDisplayName, count, changed);
+-                    // Folia end - region threading
++                    throw ERROR_NO_ITEM.create(target.getName().getString());
+                 }
+             } else if (targets.size() == 1) {
+                 throw ERROR_NOT_LIVING_ENTITY.create(entity.getName().getString());
+             }
+-            return targets.size(); // Folia - region threading
+         }
+-    }
+ 
+-    // Folia start - region threading
+-    private static void sendFeedback(
+-            final CommandSourceStack source, final Holder<Enchantment> enchantmentHolder, final int level,
+-            final java.util.concurrent.atomic.AtomicReference<Component> possibleSingleDisplayName,
+-            final java.util.concurrent.atomic.AtomicInteger count,
+-            final java.util.concurrent.atomic.AtomicInteger changed
+-    ) {
+-        if (count.decrementAndGet() == 0) {
+-            final int i = changed.get();
+-            if (i == 0) {
+-                sendMessage(source, ERROR_NOTHING_HAPPENED.create());
+-            } else {
+-                if (i == 1) {
+-                    source.sendSuccess(
+-                        () -> Component.translatable(
+-                            "commands.enchant.success.single", Enchantment.getFullname(enchantmentHolder, level), possibleSingleDisplayName.get()
+-                        ),
+-                        true
+-                    );
+-                } else {
+-                    source.sendSuccess(
+-                        () -> Component.translatable("commands.enchant.success.multiple", Enchantment.getFullname(enchantmentHolder, level), i),
+-                        true
+-                    );
+-                }
+-            }
++        if (success == 0) {
++            throw ERROR_NOTHING_HAPPENED.create();
++        }
++
++        if (targets.size() == 1) {
++            source.sendSuccess(
++                () -> Component.translatable(
++                    "commands.enchant.success.single", Enchantment.getFullname(enchantmentHolder, level), targets.iterator().next().getDisplayName()
++                ),
++                true
++            );
++        } else {
++            source.sendSuccess(
++                () -> Component.translatable("commands.enchant.success.multiple", Enchantment.getFullname(enchantmentHolder, level), targets.size()), true
++            );
+         }
+ 
+         return success;
+     }
+-    // Folia end - region threading
+ }
+diff --git a/net/minecraft/server/commands/FillCommand.java b/net/minecraft/server/commands/FillCommand.java
+index 1b363b4744397b9e04077cb4eb78a6e9654ae198..c8c8ee85004d965f77a00edb033e1863fc03833a 100644
+--- a/net/minecraft/server/commands/FillCommand.java
++++ b/net/minecraft/server/commands/FillCommand.java
+@@ -155,12 +155,6 @@ public class FillCommand {
+             );
+     }
+ 
+-    // Folia start - region threading
+-    private static void sendMessage(CommandSourceStack src, CommandSyntaxException ex) {
+-        src.sendFailure((Component)ex.getRawMessage());
+-    }
+-    // Folia end - region threading
+-
+     private static int fillBlocks(
+         final CommandSourceStack source,
+         final BoundingBox region,
+@@ -173,28 +167,7 @@ public class FillCommand {
+         int limit = source.getLevel().getGameRules().get(GameRules.MAX_BLOCK_MODIFICATIONS);
+         if (area > limit) {
+             throw ERROR_AREA_TOO_LARGE.create(limit, area);
+-        } else {
+-            record UpdatedPosition(BlockPos pos, BlockState oldState) {
+-            }
+-
+-            List<UpdatedPosition> updatePositions = Lists.newArrayList();
+-            ServerLevel level = source.getLevel();
+-            if (level.isDebug()) {
+-                throw ERROR_FAILED.create();
+-            } else {
+-                // Folia start - region threading
+-                int buffer = 32;
+-                // physics may spill into neighbour chunks, so use a buffer
+-                level.moonrise$loadChunksAsync(
+-                        (region.minX() - buffer) >> 4,
+-                        (region.maxX() + buffer) >> 4,
+-                        (region.minZ() - buffer) >> 4,
+-                        (region.maxZ() + buffer) >> 4,
+-                        net.minecraft.world.level.chunk.status.ChunkStatus.FULL,
+-                        ca.spottedleaf.concurrentutil.util.Priority.NORMAL,
+-                        (chunks) -> {
+-                            try { // Folia end - region threading
+-                int count = 0;
++        }
+ 
+         record UpdatedPosition(BlockPos pos, BlockState oldState) {
+         }
+@@ -227,14 +200,12 @@ public class FillCommand {
+                         count++;
+                     }
+                 } else {
+-                    int finalCount = count;
+-                    source.sendSuccess(() -> Component.translatable("commands.fill.success", finalCount), true);
+-                    return; // Folia - region threading
++                    if (!strict) {
++                        updatePositions.add(new UpdatedPosition(pos.immutable(), oldState));
++                    }
++
++                    count++;
+                 }
+-                // Folia start - region threading
+-                } catch (CommandSyntaxException ex) {
+-                    sendMessage(source, ex);
+-                }}); return 0; // Folia end - region threading
+             }
+         }
+ 
+diff --git a/net/minecraft/server/commands/ForceLoadCommand.java b/net/minecraft/server/commands/ForceLoadCommand.java
+index c9516b5e0812a10169946c4137aa0de2143afa23..280fe9d389862098747006cf6f2c2f3292c8ad92 100644
+--- a/net/minecraft/server/commands/ForceLoadCommand.java
++++ b/net/minecraft/server/commands/ForceLoadCommand.java
+@@ -86,17 +86,7 @@ public class ForceLoadCommand {
+         );
+     }
+ 
+-    // Folia start - region threading
+-    private static void sendMessage(CommandSourceStack src, CommandSyntaxException ex) {
+-        src.sendFailure((Component)ex.getRawMessage());
+-    }
+-    // Folia end - region threading
+-
+     private static int queryForceLoad(final CommandSourceStack source, final ColumnPos pos) throws CommandSyntaxException {
+-        // Folia start - region threading
+-        io.papermc.paper.threadedregions.RegionizedServer.getInstance().addTask(() -> {
+-            try {
+-        // Folia end - region threading
+         ChunkPos chunkPos = pos.toChunkPos();
+         ServerLevel level = source.getLevel();
+         ResourceKey<Level> dimension = level.dimension();
+@@ -108,22 +98,14 @@ public class ForceLoadCommand {
+                 ),
+                 false
+             );
+-            return; // Folia - region threading
++            return Command.SINGLE_SUCCESS;
+         } else {
+             throw ERROR_NOT_TICKING.create(chunkPos, dimension.identifier());
+         }
+-        // Folia start - region threading
+-            } catch (CommandSyntaxException ex) {
+-                sendMessage(source, ex);
+-            }
+-        });
+-        return 1;
+-        // Folia end - region threading
+     }
+ 
+     private static int listForceLoad(final CommandSourceStack source) {
+         ServerLevel level = source.getLevel();
+-        io.papermc.paper.threadedregions.RegionizedServer.getInstance().addTask(() -> { // Folia - region threading
+         ResourceKey<Level> dimension = level.dimension();
+         LongSet forcedChunks = level.getForceLoadedChunks();
+         int chunkCount = forcedChunks.size();
+@@ -142,27 +124,20 @@ public class ForceLoadCommand {
+         } else {
+             source.sendFailure(Component.translatable("commands.forceload.added.none", Component.translationArg(dimension.identifier())));
+         }
+-        }); // Folia - region threading
+ 
+-        return 1; // Folia - region threading
++        return chunkCount;
+     }
+ 
+     private static int removeAll(final CommandSourceStack source) {
+         ServerLevel level = source.getLevel();
+         ResourceKey<Level> dimension = level.dimension();
+-        io.papermc.paper.threadedregions.RegionizedServer.getInstance().addTask(() -> { // Folia - region threading
+         LongSet forcedChunks = level.getForceLoadedChunks();
+         forcedChunks.forEach(chunk -> level.setChunkForced(ChunkPos.getX(chunk), ChunkPos.getZ(chunk), false));
+         source.sendSuccess(() -> Component.translatable("commands.forceload.removed.all", Component.translationArg(dimension.identifier())), true);
+-        }); // Folia - region threading
+         return 0;
+     }
+ 
+     private static int changeForceLoad(final CommandSourceStack source, final ColumnPos from, final ColumnPos to, final boolean add) throws CommandSyntaxException {
+-        // Folia start - region threading
+-        io.papermc.paper.threadedregions.RegionizedServer.getInstance().addTask(() -> {
+-            try {
+-                // Folia end - region threading
+         int minX = Math.min(from.x(), to.x());
+         int minZ = Math.min(from.z(), to.z());
+         int maxX = Math.max(from.x(), to.x());
+@@ -200,20 +175,33 @@ public class ForceLoadCommand {
+                 throw (add ? ERROR_ALL_ADDED : ERROR_NONE_REMOVED).create();
+             }
+ 
+-                    return; // Folia - region threading
+-                }
++            if (changedChunks == 1) {
++                source.sendSuccess(
++                    () -> Component.translatable(
++                        "commands.forceload." + (add ? "added" : "removed") + ".single",
++                        Component.translationArg(finalFirstChanged),
++                        Component.translationArg(dimension.identifier())
++                    ),
++                    true
++                );
++            } else {
++                ChunkPos min = new ChunkPos(minChunkX, minChunkZ);
++                ChunkPos max = new ChunkPos(maxChunkX, maxChunkZ);
++                source.sendSuccess(
++                    () -> Component.translatable(
++                        "commands.forceload." + (add ? "added" : "removed") + ".multiple",
++                        changedChunks,
++                        Component.translationArg(dimension.identifier()),
++                        Component.translationArg(min),
++                        Component.translationArg(max)
++                    ),
++                    true
++                );
+             }
+ 
+             return changedChunks;
+         } else {
+             throw BlockPosArgument.ERROR_OUT_OF_WORLD.create();
+         }
+-        // Folia start - region threading
+-            } catch (CommandSyntaxException ex) {
+-                sendMessage(source, ex);
+-            }
+-        });
+-        return 1;
+-        // Folia end - region threading
+     }
+ }
+diff --git a/net/minecraft/server/commands/GiveCommand.java b/net/minecraft/server/commands/GiveCommand.java
+index dcb2ef285aeb83a2b3412196752658a92b3de68a..ecf25aa1cdb8f443cb4a8e87705a5c82666d345c 100644
+--- a/net/minecraft/server/commands/GiveCommand.java
++++ b/net/minecraft/server/commands/GiveCommand.java
+@@ -54,11 +54,14 @@ public class GiveCommand {
+             return 0;
+         }
+ 
+-                while (remaining > 0) {
+-                    int size = Math.min(maxStackSize, remaining);
+-                    remaining -= size;
+-                    ItemStack copyToDrop = prototypeItemStack.copyWithCount(size);
+-                    player.getBukkitEntity().taskScheduler.scheduleOrExecute((ServerPlayer newPlayer) -> { // Folia - region threading
++        for (ServerPlayer player : players) {
++            int remaining = count;
++
++            while (remaining > 0) {
++                int size = Math.min(maxStackSize, remaining);
++                remaining -= size;
++                ItemStack copyToDrop = prototypeItemStack.copyWithCount(size);
++                player.getBukkitEntity().taskScheduler.scheduleOrExecute((ServerPlayer newPlayer) -> { // Folia - region threading
+                     boolean added = newPlayer.getInventory().add(copyToDrop); // Folia - region threading
+                     if (added && copyToDrop.isEmpty()) {
+                         ItemEntity drop = newPlayer.drop(prototypeItemStack.copy(), false, false, false, null); // Paper - do not fire PlayerDropItemEvent for /give command // Folia - region threading
+@@ -85,29 +88,7 @@ public class GiveCommand {
+                             drop.setTarget(newPlayer.getUUID()); // Folia - region threading
+                         }
+                     }
+-                    }); // Folia - region threading
+-                }
+-            }
+-
+-                    player.level()
+-                        .playSound(
+-                            null,
+-                            player.getX(),
+-                            player.getY(),
+-                            player.getZ(),
+-                            SoundEvents.ITEM_PICKUP,
+-                            SoundSource.PLAYERS,
+-                            0.2F,
+-                            ((player.getRandom().nextFloat() - player.getRandom().nextFloat()) * 0.7F + 1.0F) * 2.0F
+-                        );
+-                    player.containerMenu.broadcastChanges();
+-                } else {
+-                    ItemEntity drop = player.drop(copyToDrop, false, false, false, null); // Paper - do not fire PlayerDropItemEvent for /give command
+-                    if (drop != null) {
+-                        drop.setNoPickUpDelay();
+-                        drop.setTarget(player.getUUID());
+-                    }
+-                }
++                }); // Folia - region threading
+             }
+         }
+ 
+diff --git a/net/minecraft/server/commands/PlaceCommand.java b/net/minecraft/server/commands/PlaceCommand.java
+index a60f526df7d20cfc550873f4149b076cc61683aa..74f96663bbfec728ea94beab0ce0d81cda4c39bf 100644
+--- a/net/minecraft/server/commands/PlaceCommand.java
++++ b/net/minecraft/server/commands/PlaceCommand.java
+@@ -250,39 +250,18 @@ public class PlaceCommand {
+         );
+     }
+ 
+-    // Folia start - region threading
+-    private static void sendMessage(CommandSourceStack src, CommandSyntaxException ex) {
+-        src.sendFailure((Component)ex.getRawMessage());
+-    }
+-    // Folia end - region threading
+-
+     public static int placeFeature(final CommandSourceStack source, final Holder.Reference<ConfiguredFeature<?, ?>> featureHolder, final BlockPos pos) throws CommandSyntaxException {
+         ServerLevel level = source.getLevel();
+         ConfiguredFeature<?, ?> feature = featureHolder.value();
+         ChunkPos chunkPos = ChunkPos.containing(pos);
+         checkLoaded(level, new ChunkPos(chunkPos.x() - 1, chunkPos.z() - 1), new ChunkPos(chunkPos.x() + 1, chunkPos.z() + 1));
+-        // Folia start - region threading
+-        level.moonrise$loadChunksAsync(
+-                pos, 16, net.minecraft.world.level.chunk.status.ChunkStatus.FULL,
+-                ca.spottedleaf.concurrentutil.util.Priority.NORMAL,
+-                (java.util.List<net.minecraft.world.level.chunk.ChunkAccess> _chunks) -> {
+-                    try {
+-                        // Folia end - region threading
+         if (!feature.place(level, level.getChunkSource().getGenerator(), level.getRandom(), pos)) {
+             throw ERROR_FEATURE_FAILED.create();
+-        } else {
+-            String id = featureHolder.key().identifier().toString();
+-            source.sendSuccess(() -> Component.translatable("commands.place.feature.success", id, pos.getX(), pos.getY(), pos.getZ()), true);
+-            return; // Folia - region threading
+         }
+-        // Folia start - region threading
+-                } catch (CommandSyntaxException ex) {
+-                    sendMessage(source, ex);
+-                }
+-            }
+-        );
+-        return 1;
+-        // Folia end - region threading
++
++        String id = featureHolder.key().identifier().toString();
++        source.sendSuccess(() -> Component.translatable("commands.place.feature.success", id, pos.getX(), pos.getY(), pos.getZ()), true);
++        return Command.SINGLE_SUCCESS;
+     }
+ 
+     public static int placeJigsaw(
+@@ -291,40 +270,18 @@ public class PlaceCommand {
+         ServerLevel level = source.getLevel();
+         ChunkPos chunk = ChunkPos.containing(pos);
+         checkLoaded(level, chunk, chunk);
+-        // Folia start - region threading
+-        level.moonrise$loadChunksAsync(
+-                pos, 16, net.minecraft.world.level.chunk.status.ChunkStatus.FULL,
+-                ca.spottedleaf.concurrentutil.util.Priority.NORMAL,
+-                (java.util.List<net.minecraft.world.level.chunk.ChunkAccess> _chunks) -> {
+-                    try {
+-                        // Folia end - region threading
+         if (!JigsawPlacement.generateJigsaw(level, pool, target, maxDepth, pos, false)) {
+             throw ERROR_JIGSAW_FAILED.create();
+-        } else {
+-            source.sendSuccess(() -> Component.translatable("commands.place.jigsaw.success", pos.getX(), pos.getY(), pos.getZ()), true);
+-            return; // Folia - region threading
+         }
+-        // Folia start - region threading
+-                } catch (CommandSyntaxException ex) {
+-                    sendMessage(source, ex);
+-                }
+-            }
+-        );
+-        return 1;
+-        // Folia end - region threading
++
++        source.sendSuccess(() -> Component.translatable("commands.place.jigsaw.success", pos.getX(), pos.getY(), pos.getZ()), true);
++        return Command.SINGLE_SUCCESS;
+     }
+ 
+     public static int placeStructure(final CommandSourceStack source, final Holder.Reference<Structure> structureHolder, final BlockPos pos) throws CommandSyntaxException {
+         ServerLevel level = source.getLevel();
+         Structure structure = structureHolder.value();
+         ChunkGenerator chunkGenerator = level.getChunkSource().getGenerator();
+-        // Folia start - region threading
+-        level.moonrise$loadChunksAsync(
+-                pos, 16, net.minecraft.world.level.chunk.status.ChunkStatus.FULL,
+-                ca.spottedleaf.concurrentutil.util.Priority.NORMAL,
+-                (java.util.List<net.minecraft.world.level.chunk.ChunkAccess> _chunks) -> {
+-                    try {
+-                        // Folia end - region threading
+         StructureStart start = structure.generate(
+             structureHolder,
+             level.dimension(),
+@@ -341,35 +298,27 @@ public class PlaceCommand {
+         );
+         if (!start.isValid()) {
+             throw ERROR_STRUCTURE_FAILED.create();
+-        } else {
+-            start.generationEventCause = org.bukkit.event.world.AsyncStructureGenerateEvent.Cause.COMMAND; // CraftBukkit - set AsyncStructureGenerateEvent.Cause.COMMAND as generation cause
+-            BoundingBox boundingBox = start.getBoundingBox();
+-            ChunkPos chunkMin = new ChunkPos(SectionPos.blockToSectionCoord(boundingBox.minX()), SectionPos.blockToSectionCoord(boundingBox.minZ()));
+-            ChunkPos chunkMax = new ChunkPos(SectionPos.blockToSectionCoord(boundingBox.maxX()), SectionPos.blockToSectionCoord(boundingBox.maxZ()));
+-            checkLoaded(level, chunkMin, chunkMax);
+-            ChunkPos.rangeClosed(chunkMin, chunkMax)
+-                .forEach(
+-                    c -> start.placeInChunk(
+-                        level,
+-                        level.structureManager(),
+-                        chunkGenerator,
+-                        level.getRandom(),
+-                        new BoundingBox(c.getMinBlockX(), level.getMinY(), c.getMinBlockZ(), c.getMaxBlockX(), level.getMaxY() + 1, c.getMaxBlockZ()),
+-                        c
+-                    )
+-                );
+-            String id = structureHolder.key().identifier().toString();
+-            source.sendSuccess(() -> Component.translatable("commands.place.structure.success", id, pos.getX(), pos.getY(), pos.getZ()), true);
+-            return; // Folia - region threading
+         }
+-        // Folia start - region threading
+-                } catch (CommandSyntaxException ex) {
+-                    sendMessage(source, ex);
+-                }
+-            }
+-        );
+-        return 1;
+-        // Folia end - region threading
++
++        start.generationEventCause = org.bukkit.event.world.AsyncStructureGenerateEvent.Cause.COMMAND; // CraftBukkit - set AsyncStructureGenerateEvent.Cause.COMMAND as generation cause
++        BoundingBox boundingBox = start.getBoundingBox();
++        ChunkPos chunkMin = new ChunkPos(SectionPos.blockToSectionCoord(boundingBox.minX()), SectionPos.blockToSectionCoord(boundingBox.minZ()));
++        ChunkPos chunkMax = new ChunkPos(SectionPos.blockToSectionCoord(boundingBox.maxX()), SectionPos.blockToSectionCoord(boundingBox.maxZ()));
++        checkLoaded(level, chunkMin, chunkMax);
++        ChunkPos.rangeClosed(chunkMin, chunkMax)
++            .forEach(
++                c -> start.placeInChunk(
++                    level,
++                    level.structureManager(),
++                    chunkGenerator,
++                    level.getRandom(),
++                    new BoundingBox(c.getMinBlockX(), level.getMinY(), c.getMinBlockZ(), c.getMaxBlockX(), level.getMaxY() + 1, c.getMaxBlockZ()),
++                    c
++                )
++            );
++        String id = structureHolder.key().identifier().toString();
++        source.sendSuccess(() -> Component.translatable("commands.place.structure.success", id, pos.getX(), pos.getY(), pos.getZ()), true);
++        return Command.SINGLE_SUCCESS;
+     }
+ 
+     public static int placeTemplate(
+@@ -383,13 +332,6 @@ public class PlaceCommand {
+         final boolean strict
+     ) throws CommandSyntaxException {
+         ServerLevel level = source.getLevel();
+-        // Folia start - region threading
+-        level.moonrise$loadChunksAsync(
+-                pos, 16, net.minecraft.world.level.chunk.status.ChunkStatus.FULL,
+-                ca.spottedleaf.concurrentutil.util.Priority.NORMAL,
+-                (java.util.List<net.minecraft.world.level.chunk.ChunkAccess> _chunks) -> {
+-                    try {
+-                        // Folia end - region threading
+         StructureTemplateManager manager = level.getStructureManager();
+ 
+         Optional<StructureTemplate> maybeStructureTemplate;
+@@ -403,32 +345,24 @@ public class PlaceCommand {
+             throw ERROR_TEMPLATE_INVALID.create(template);
+         }
+ 
+-            boolean placed = structureTemplate.placeInWorld(
+-                level,
+-                pos,
+-                pos,
+-                placeSettings,
+-                StructureBlockEntity.createRandom(seed),
+-                Block.UPDATE_CLIENTS | (strict ? Block.UPDATE_SKIP_ALL_SIDEEFFECTS : 0)
+-            );
+-            if (!placed) {
+-                throw ERROR_TEMPLATE_FAILED.create();
+-            } else {
+-                source.sendSuccess(
+-                    () -> Component.translatable("commands.place.template.success", Component.translationArg(template), pos.getX(), pos.getY(), pos.getZ()),
+-                    true
+-                );
+-                return; // Folia - region threading
+-            }
++        StructureTemplate structureTemplate = maybeStructureTemplate.get();
++        checkLoaded(level, ChunkPos.containing(pos), ChunkPos.containing(pos.offset(structureTemplate.getSize())));
++        StructurePlaceSettings placeSettings = new StructurePlaceSettings().setMirror(mirror).setRotation(rotation).setKnownShape(strict);
++        if (integrity < 1.0F) {
++            placeSettings.clearProcessors().addProcessor(new BlockRotProcessor(integrity)).setRandom(StructureBlockEntity.createRandom(seed));
+         }
+-        // Folia start - region threading
+-                } catch (CommandSyntaxException ex) {
+-                    sendMessage(source, ex);
+-                }
+-            }
++
++        boolean placed = structureTemplate.placeInWorld(
++            level, pos, pos, placeSettings, StructureBlockEntity.createRandom(seed), Block.UPDATE_CLIENTS | (strict ? Block.UPDATE_SKIP_ALL_SIDEEFFECTS : 0)
++        );
++        if (!placed) {
++            throw ERROR_TEMPLATE_FAILED.create();
++        }
++
++        source.sendSuccess(
++            () -> Component.translatable("commands.place.template.success", Component.translationArg(template), pos.getX(), pos.getY(), pos.getZ()), true
+         );
+-        return 1;
+-        // Folia end - region threading
++        return Command.SINGLE_SUCCESS;
+     }
+ 
+     private static void checkLoaded(final ServerLevel level, final ChunkPos chunkMin, final ChunkPos chunkMax) throws CommandSyntaxException {
+diff --git a/net/minecraft/server/commands/SetBlockCommand.java b/net/minecraft/server/commands/SetBlockCommand.java
+index 002fc9577a522059d027afff80beb0764aded75c..f1cab46acbc1febe1b842d14d4d64aec1da06f75 100644
+--- a/net/minecraft/server/commands/SetBlockCommand.java
++++ b/net/minecraft/server/commands/SetBlockCommand.java
+@@ -142,8 +142,6 @@ public class SetBlockCommand {
+ 
+                 source.sendSuccess(() -> Component.translatable("commands.setblock.success", pos.getX(), pos.getY(), pos.getZ()), true);
+                 return; // Folia - region threading
+-            }
+-        }
+         // Folia start - region threading
+                 } catch (CommandSyntaxException ex) {
+                     sendMessage(source, ex);
+diff --git a/net/minecraft/server/commands/TeleportCommand.java b/net/minecraft/server/commands/TeleportCommand.java
+index 44b0f5c1d699a391ce1408905921a518caa55689..290547abf7037c5c88736c66765b2ee8f575c53b 100644
+--- a/net/minecraft/server/commands/TeleportCommand.java
++++ b/net/minecraft/server/commands/TeleportCommand.java
+@@ -150,7 +150,18 @@ public class TeleportCommand {
+ 
+     private static int teleportToEntity(final CommandSourceStack source, final Collection<? extends Entity> entities, final Entity destination) throws CommandSyntaxException {
+         for (Entity entity : entities) {
+-            io.papermc.paper.threadedregions.TeleportUtils.teleport(entity, false, destination, Float.valueOf(destination.getYRot()), Float.valueOf(destination.getXRot()), Entity.TELEPORT_FLAG_LOAD_CHUNK, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.COMMAND, null); // Folia - region threading
++            performTeleport(
++                source,
++                entity,
++                (ServerLevel)destination.level(),
++                destination.getX(),
++                destination.getY(),
++                destination.getZ(),
++                EnumSet.noneOf(Relative.class),
++                destination.getYRot(),
++                destination.getXRot(),
++                null
++            );
+         }
+ 
+         if (entities.size() == 1) {
+@@ -236,35 +247,7 @@ public class TeleportCommand {
+         BlockPos blockPos = BlockPos.containing(x, y, z);
+         if (!Level.isInSpawnableBounds(blockPos)) {
+             throw INVALID_POSITION.create();
+-        } else {
+-            double relativeOrAbsoluteX = relatives.contains(Relative.X) ? x - victim.getX() : x;
+-            double relativeOrAbsoluteY = relatives.contains(Relative.Y) ? y - victim.getY() : y;
+-            double relativeOrAbsoluteZ = relatives.contains(Relative.Z) ? z - victim.getZ() : z;
+-            float relativeOrAbsoluteYRot = relatives.contains(Relative.Y_ROT) ? yRot - victim.getYRot() : yRot;
+-            float relativeOrAbsoluteXRot = relatives.contains(Relative.X_ROT) ? xRot - victim.getXRot() : xRot;
+-            float newYRot = Mth.wrapDegrees(relativeOrAbsoluteYRot);
+-            float newXRot = Mth.wrapDegrees(relativeOrAbsoluteXRot);
+-            // Folia start - region threading
+-            if (true) {
+-                Vec3 posFinal = new Vec3(x, y, z);
+-                Float yawFinal = Float.valueOf(newYRot);
+-                Float pitchFinal = Float.valueOf(newXRot);
+-                victim.getBukkitEntity().taskScheduler.schedule((Entity nmsEntity) -> {
+-                    nmsEntity.stopRiding();
+-                    nmsEntity.teleportAsync(
+-                            level, posFinal, yawFinal, pitchFinal, Vec3.ZERO,
+-                            org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.COMMAND,
+-                            Entity.TELEPORT_FLAG_LOAD_CHUNK | Entity.TELEPORT_FLAG_TELEPORT_PASSENGERS,
+-                            null
+-                    );
+-                }, null, 1L);
+-                return;
+-            }
+-            // Folia end - region threading
+-            if (victim.teleportTo(level, relativeOrAbsoluteX, relativeOrAbsoluteY, relativeOrAbsoluteZ, relatives, newYRot, newXRot, true, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.COMMAND)) { // Paper - teleport cause
+-                if (lookAt != null) {
+-                    lookAt.perform(source, victim);
+-                }
++        }
+ 
+         double relativeOrAbsoluteX = relatives.contains(Relative.X) ? x - victim.getX() : x;
+         double relativeOrAbsoluteY = relatives.contains(Relative.Y) ? y - victim.getY() : y;
+diff --git a/net/minecraft/server/level/PlayerSpawnFinder.java b/net/minecraft/server/level/PlayerSpawnFinder.java
+index d28b88b902214dd6f8221b3908260d44953f30ef..3509df9dd423b38d1ca3e4a420d1352ae95d3551 100644
+--- a/net/minecraft/server/level/PlayerSpawnFinder.java
++++ b/net/minecraft/server/level/PlayerSpawnFinder.java
+@@ -26,7 +26,7 @@ import net.minecraft.world.phys.Vec3;
+ import org.jspecify.annotations.Nullable;
+ 
+ public class PlayerSpawnFinder {
+-    public static final EntityDimensions PLAYER_DIMENSIONS = EntityType.PLAYER.getDimensions(); // Folia - region threading - public
++    private static final EntityDimensions PLAYER_DIMENSIONS = EntityTypes.PLAYER.getDimensions();
+     private static final int ABSOLUTE_MAX_ATTEMPTS = 1024;
+     private final ServerLevel level;
+     private final BlockPos spawnSuggestion;
+@@ -116,13 +116,9 @@ public class PlayerSpawnFinder {
+             int chunkX = SectionPos.blockToSectionCoord(candidateX);
+             int chunkZ = SectionPos.blockToSectionCoord(candidateZ);
+             ((ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel)this.level) // Paper - rewrite chunk system
+-                    // Folia start - region threading
+-                    .moonrise$getChunkTaskScheduler().scheduleChunkLoad( // Paper - rewrite chunk system
+-                            chunkX, chunkZ, net.minecraft.world.level.chunk.status.ChunkStatus.FULL, true,
+-                            ca.spottedleaf.concurrentutil.util.Priority.HIGHER,
+-                            (final net.minecraft.world.level.chunk.ChunkAccess object) -> {
+-                                Throwable throwable = null;
+-                                // Folia end - region threading
++                .moonrise$getChunkTaskScheduler().chunkHolderManager // Paper - rewrite chunk system
++                .addTicketAndLoadWithRadius(TicketType.SPAWN_SEARCH, new ChunkPos(chunkX, chunkZ), 0, net.minecraft.world.level.chunk.status.ChunkStatus.FULL, ca.spottedleaf.concurrentutil.util.Priority.HIGH) // Paper - rewrite chunk system
++                .whenCompleteAsync((ignored, throwable) -> {
+                     if (throwable == null) {
+                         try {
+                             Optional<Vec3> spawnPos = candidateChecker.get();
+@@ -145,34 +141,22 @@ public class PlayerSpawnFinder {
+                         details.setDetail("Progress", () -> candidateIndex + " out of " + this.candidateCount);
+                         this.finishedFuture.completeExceptionally(new ReportedException(report));
+                     }
+-                }); // Paper - rewrite chunk system // Folia - region threading
++                }, this.level.getChunkSource().mainThreadProcessor); // Paper - rewrite chunk system
+         }
+     }
+ 
+     protected static @Nullable BlockPos getLevelRespawnPos(final ServerLevel level, final int x, final int z) {
+         boolean caveWorld = level.dimensionType().hasCeiling();
+-        net.minecraft.world.level.chunk.ChunkAccess chunk = level.moonrise$getChunkTaskScheduler().syncLoadNonFull(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(z), net.minecraft.world.level.chunk.status.ChunkStatus.SPAWN); // Folia - region threading
++        LevelChunk chunk = level.getChunk(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(z));
+         int topY = caveWorld ? level.getChunkSource().getGenerator().getSpawnHeight(level) : chunk.getHeight(Heightmap.Types.MOTION_BLOCKING, x & 15, z & 15);
+         if (topY < level.getMinY()) {
+             return null;
+-        } else {
+-            int surface = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, x & 15, z & 15);
+-            if (surface <= topY && surface > chunk.getHeight(Heightmap.Types.OCEAN_FLOOR, x & 15, z & 15)) {
+-                return null;
+-            } else {
+-                BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+-
+-                for (int y = topY + 1; y >= level.getMinY(); y--) {
+-                    pos.set(x, y, z);
+-                    BlockState blockState = chunk.getBlockState(pos); // Folia - region threading
+-                    if (!blockState.getFluidState().isEmpty()) {
+-                        break;
+-                    }
++        }
+ 
+-                    if (Block.isFaceFull(blockState.getCollisionShape(chunk, pos), Direction.UP)) { // Folia - region threading
+-                        return pos.above().immutable();
+-                    }
+-                }
++        int surface = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, x & 15, z & 15);
++        if (surface <= topY && surface > chunk.getHeight(Heightmap.Types.OCEAN_FLOOR, x & 15, z & 15)) {
++            return null;
++        }
+ 
+         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+ 
+diff --git a/net/minecraft/server/level/ServerPlayerGameMode.java b/net/minecraft/server/level/ServerPlayerGameMode.java
+index 0366b32294e1ff8d8088cbd2da4bdb759893865b..27bdb82793250b33b457fe027c003948000857c9 100644
+--- a/net/minecraft/server/level/ServerPlayerGameMode.java
++++ b/net/minecraft/server/level/ServerPlayerGameMode.java
+@@ -128,7 +128,7 @@ public class ServerPlayerGameMode {
+         // this.gameTicks = net.minecraft.server.MinecraftServer.currentTick; // CraftBukkit
+         this.gameTicks = (int) this.level.getLagCompensationTick(); // Paper - lag compensate eating
+         if (this.hasDelayedDestroy) {
+-            BlockState blockState = !ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this.level, this.delayedDestroyPos) ? null : this.level.getBlockStateIfLoaded(this.delayedDestroyPos); // Paper - Don't allow digging into unloaded chunks // Folia - region threading - don't destroy blocks not owned
++            BlockState blockState = this.level.getBlockStateIfLoaded(this.delayedDestroyPos); // Paper - Don't allow digging into unloaded chunks
+             if (blockState == null || blockState.isAir()) { // Paper - Don't allow digging into unloaded chunks
+                 this.hasDelayedDestroy = false;
+             } else {
+@@ -140,7 +140,7 @@ public class ServerPlayerGameMode {
+             }
+         } else if (this.isDestroyingBlock) {
+             // Paper start - Don't allow digging into unloaded chunks; don't want to do same logic as above, return instead
+-            BlockState blockState = !ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this.level, this.destroyPos) ? null : this.level.getBlockStateIfLoaded(this.destroyPos); // Folia - region threading - don't destroy blocks not owned
++            BlockState blockState = this.level.getBlockStateIfLoaded(this.destroyPos);
+             if (blockState == null) {
+                 this.isDestroyingBlock = false;
+                 return;
+@@ -375,26 +375,15 @@ public class ServerPlayerGameMode {
+ 
+         if (false && !this.player.getMainHandItem().canDestroyBlock(state, this.level, pos, this.player)) { // CraftBukkit - false
+             return false;
+-        } else {
+-            state = this.level.getBlockState(pos); // CraftBukkit - update state from plugins
+-            if (state.isAir()) return false; // CraftBukkit - A plugin set block to air without cancelling
+-            BlockEntity blockEntity = this.level.getBlockEntity(pos);
+-            Block block = state.getBlock();
+-            if (block instanceof GameMasterBlock && !this.player.canUseGameMasterBlocks() && !(block instanceof net.minecraft.world.level.block.CommandBlock && (this.player.isCreative() && this.player.getBukkitEntity().hasPermission("minecraft.commandblock")))) { // Paper - command block permission
+-                this.level.sendBlockUpdated(pos, state, state, Block.UPDATE_ALL);
+-                return false;
+-            } else if (this.player.blockActionRestricted(this.level, pos, this.gameModeForPlayer)) {
+-                return false;
+-            } else {
+-                // CraftBukkit start
+-                org.bukkit.block.BlockState bState = bblock.getState();
+-                this.level.getCurrentWorldData().captureDrops = new java.util.ArrayList<>(); // Folia - region threading
+-                // CraftBukkit end
+-                BlockState adjustedState = block.playerWillDestroy(this.level, pos, state, this.player);
+-                boolean changed = this.level.removeBlock(pos, false);
+-                if (SharedConstants.DEBUG_BLOCK_BREAK) {
+-                    LOGGER.info("server broke {} {} -> {}", pos, adjustedState, this.level.getBlockState(pos));
+-                }
++        }
++        state = this.level.getBlockState(pos); // CraftBukkit - update state from plugins
++        if (state.isAir()) return false; // CraftBukkit - A plugin set block to air without cancelling
++        BlockEntity blockEntity = this.level.getBlockEntity(pos);
++        Block block = state.getBlock();
++        if (block instanceof GameMasterBlock && !this.player.canUseGameMasterBlocks() && !(block instanceof net.minecraft.world.level.block.CommandBlock && (this.player.isCreative() && this.player.getBukkitEntity().hasPermission("minecraft.commandblock")))) { // Paper - command block permission
++            this.level.sendBlockUpdated(pos, state, state, Block.UPDATE_ALL);
++            return false;
++        }
+ 
+         if (this.player.blockActionRestricted(this.level, pos, this.gameModeForPlayer)) {
+             return false;
+@@ -410,14 +399,9 @@ public class ServerPlayerGameMode {
+             LOGGER.info("server broke {} {} -> {}", pos, adjustedState, this.level.getBlockState(pos));
+         }
+ 
+-                    // return true; // CraftBukkit
+-                }
+-                // CraftBukkit start
+-                java.util.List<net.minecraft.world.entity.item.ItemEntity> itemsToDrop = this.level.getCurrentWorldData().captureDrops; // Paper - capture all item additions to the world  // Folia - region threading
+-                this.level.getCurrentWorldData().captureDrops = null; // Paper - capture all item additions to the world; Remove this earlier so that we can actually drop stuff  // Folia - region threading
+-                if (event.isDropItems()) {
+-                    org.bukkit.craftbukkit.event.CraftEventFactory.handleBlockDropItemEvent(bblock, bState, this.player, itemsToDrop); // Paper - capture all item additions to the world
+-                }
++        if (changed) {
++            block.destroy(this.level, pos, adjustedState);
++        }
+ 
+         ItemStack destroyedWith = null; // Paper - Trigger bee_nest_destroyed trigger in the correct place
+         boolean canDestroy = false; // Paper - Trigger bee_nest_destroyed trigger in the correct place
+diff --git a/net/minecraft/world/entity/raid/Raids.java b/net/minecraft/world/entity/raid/Raids.java
+index d52bf577a74dddb7692f612cd18aff95be670a0f..bc0f31a16f7b055e85f10eda377026a927032535 100644
+--- a/net/minecraft/world/entity/raid/Raids.java
++++ b/net/minecraft/world/entity/raid/Raids.java
+@@ -34,19 +34,18 @@ public class Raids extends SavedData {
+                 Raids.RaidWithId.CODEC
+                     .listOf()
+                     .optionalFieldOf("raids", List.of())
+-                    .forGetter(r -> r.raidMap.entrySet().stream().map(Raids.RaidWithId::from).toList()), // Folia - make raids thread-safe
+-                Codec.INT.fieldOf("next_id").forGetter(r -> r.nextAvailableID.get()), // Folia - make raids thread-safe
++                    .forGetter(r -> r.raidMap.int2ObjectEntrySet().stream().map(Raids.RaidWithId::from).toList()),
++                Codec.INT.fieldOf("next_id").forGetter(r -> r.nextId),
+                 Codec.INT.fieldOf("tick").forGetter(r -> r.tick)
+             )
+             .apply(i, Raids::new)
+     );
+     public static final SavedDataType<Raids> TYPE = new SavedDataType<>(RAID_FILE_ID, Raids::new, CODEC, DataFixTypes.SAVED_DATA_RAIDS);
+-    public final ca.spottedleaf.concurrentutil.map.concurrent.ints.ConcurrentChainedInt2ReferenceHashTable<Raid> raidMap = new ca.spottedleaf.concurrentutil.map.concurrent.ints.ConcurrentChainedInt2ReferenceHashTable<>(); // Folia - make raids thread-safe
+-    private final java.util.concurrent.atomic.AtomicInteger nextAvailableID = new java.util.concurrent.atomic.AtomicInteger(); // Folia - make raids thread-safe
++    public final Int2ObjectMap<Raid> raidMap = new Int2ObjectOpenHashMap<>();
++    private int nextId = 1;
+     private int tick;
+ 
+     public Raids() {
+-        this.nextAvailableID.set(1); // Folia - make raids thread-safe
+         this.setDirty();
+     }
+ 
+@@ -56,7 +55,7 @@ public class Raids extends SavedData {
+             raid.raid.idOrNegativeOne = raid.id; // Paper - expose id of raids while method is kept around as deprecated for removal
+         }
+ 
+-        this.nextAvailableID.set(nextId); // Folia - make raids thread-safe
++        this.nextId = nextId;
+         this.tick = tick;
+     }
+ 
+@@ -65,32 +64,21 @@ public class Raids extends SavedData {
+     }
+ 
+     public OptionalInt getId(final Raid raid) {
+-        for (ca.spottedleaf.concurrentutil.map.concurrent.ints.ConcurrentChainedInt2ReferenceHashTable.TableEntry<Raid> entry : this.raidMap.entrySet()) { // Folia - make raids thread-safe
++        for (Entry<Raid> entry : this.raidMap.int2ObjectEntrySet()) {
+             if (entry.getValue() == raid) {
+-                return OptionalInt.of(entry.getKey()); // Folia - make raids thread-safe
++                return OptionalInt.of(entry.getIntKey());
+             }
+         }
+ 
+         return OptionalInt.empty();
+     }
+ 
+-    // Folia start - make raids thread-safe
+-    public void globalTick() {
+-        this.tick++;
+-    }
+-
+     public void tick(final ServerLevel level) {
+-        // Folia end - make raids thread-safe
+         this.tick++;
+         Iterator<Raid> raidIterator = this.raidMap.values().iterator();
+ 
+         while (raidIterator.hasNext()) {
+             Raid raid = raidIterator.next();
+-            // Folia start - make raids thread-safe
+-            if (!raid.ownsRaid(level)) {
+-                continue;
+-            }
+-            // Folia end - make raids thread-safe
+             if (!level.getGameRules().get(GameRules.RAIDS)) {
+                 raid.stop();
+             }
+@@ -103,7 +91,9 @@ public class Raids extends SavedData {
+             }
+         }
+ 
+-        // Folia - make raids thread-safe - move to globalTick()
++        if (this.tick % 200 == 0) {
++            this.setDirty();
++        }
+     }
+ 
+     public static boolean canJoinRaid(final Raider raider) {
+@@ -139,52 +129,21 @@ public class Raids extends SavedData {
+             posTotals = posTotals.scale(1.0 / count);
+             raidCenterPos = BlockPos.containing(posTotals);
+         } else {
+-            ServerLevel level = player.level();
+-            if (!level.getGameRules().get(GameRules.RAIDS) || !ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(player) || !ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(level, raidPosition.getX() >> 4, raidPosition.getZ() >> 4, 8) || !ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(level, player.chunkPosition().x(), player.chunkPosition().z(), 8)) { // Folia - region threading
+-                return null;
+-            } else if (!level.environmentAttributes().getValue(EnvironmentAttributes.CAN_START_RAID, raidPosition)) {
++            raidCenterPos = raidPosition;
++        }
++
++        Raid raid = this.getOrCreateRaid(level, raidCenterPos);
++        // CraftBukkit - moved down
++        // if (!raid.isStarted() && !this.raidMap.containsValue(raid)) {
++        //     this.raidMap.put(this.getUniqueId(), raid);
++        // }
++
++        if (!raid.isStarted() || (raid.isInProgress() && raid.getRaidOmenLevel() < raid.getMaxRaidOmenLevel())) { // CraftBukkit - fixed a bug with raid: players could add up Bad Omen level even when the raid had finished
++            // CraftBukkit start
++            if (!org.bukkit.craftbukkit.event.CraftEventFactory.callRaidTriggerEvent(level, raid, player)) {
++                player.removeEffect(net.minecraft.world.effect.MobEffects.RAID_OMEN);
+                 return null;
+-            } else {
+-                List<PoiRecord> posses = level.getPoiManager()
+-                    .getInRange(e -> e.is(PoiTypeTags.VILLAGE), raidPosition, 64, PoiManager.Occupancy.IS_OCCUPIED)
+-                    .toList();
+-                int count = 0;
+-                Vec3 posTotals = Vec3.ZERO;
+-
+-                for (PoiRecord p : posses) {
+-                    BlockPos pos = p.getPos();
+-                    posTotals = posTotals.add(pos.getX(), pos.getY(), pos.getZ());
+-                    count++;
+-                }
+-
+-                BlockPos raidCenterPos;
+-                if (count > 0) {
+-                    posTotals = posTotals.scale(1.0 / count);
+-                    raidCenterPos = BlockPos.containing(posTotals);
+-                } else {
+-                    raidCenterPos = raidPosition;
+-                }
+-
+-                Raid raid = this.getOrCreateRaid(level, raidCenterPos);
+-                // CraftBukkit - moved down
+-                // if (!raid.isStarted() && !this.raidMap.containsValue(raid)) {
+-                //     this.raidMap.put(this.getUniqueId(), raid);
+-                // }
+-
+-                if (!raid.isStarted() || (raid.isInProgress() && raid.getRaidOmenLevel() < raid.getMaxRaidOmenLevel())) { // CraftBukkit - fixed a bug with raid: players could add up Bad Omen level even when the raid had finished
+-                    // CraftBukkit start
+-                    if (!org.bukkit.craftbukkit.event.CraftEventFactory.callRaidTriggerEvent(level, raid, player)) {
+-                        player.removeEffect(net.minecraft.world.effect.MobEffects.RAID_OMEN);
+-                        return null;
+-                    }
+-
+-                    if (!raid.isStarted() && !this.raidMap.containsValue(raid)) {
+-                        int id = this.getUniqueId(); this.raidMap.put(id, raid); // Folia - region threading
+-                        raid.idOrNegativeOne = id; // Paper - expose id of raids while method is kept around as deprecated for removal // Folia - region threading
+-                    }
+-                    // CraftBukkit end
+-                    raid.absorbRaidOmen(player);
+-                }
++            }
+ 
+             if (!raid.isStarted() && !this.raidMap.containsValue(raid)) {
+                 this.raidMap.put(this.getUniqueId(), raid);
+@@ -208,19 +167,14 @@ public class Raids extends SavedData {
+     }
+ 
+     private int getUniqueId() {
+-        return this.nextAvailableID.incrementAndGet(); // Folia - make raids thread-safe
++        return ++this.nextId;
+     }
+ 
+-    public @Nullable Raid getNearbyRaid(final ServerLevel world, final BlockPos pos, final int maxDistSqr) { // Folia - make raids thread-safe - add ServerLevel param
++    public @Nullable Raid getNearbyRaid(final BlockPos pos, final int maxDistSqr) {
+         Raid closest = null;
+         double closestDistanceSqr = maxDistSqr;
+ 
+         for (Raid raid : this.raidMap.values()) {
+-            // Folia start - make raids thread-safe
+-            if (!raid.ownsRaid(world)) {
+-                continue;
+-            }
+-            // Folia end - make raids thread-safe
+             double distance = raid.getCenter().distSqr(pos);
+             if (raid.isActive() && distance < closestDistanceSqr) {
+                 closest = raid;
+@@ -242,8 +196,8 @@ public class Raids extends SavedData {
+                 .apply(i, Raids.RaidWithId::new)
+         );
+ 
+-        public static Raids.RaidWithId from(final ca.spottedleaf.concurrentutil.map.concurrent.ints.ConcurrentChainedInt2ReferenceHashTable.TableEntry<Raid> entry) { // Folia - make raids thread-safe
+-            return new Raids.RaidWithId(entry.getKey(), entry.getValue()); // Folia - make raids thread-safe
++        public static Raids.RaidWithId from(final Entry<Raid> entry) {
++            return new Raids.RaidWithId(entry.getIntKey(), entry.getValue());
+         }
+     }
+ }
+diff --git a/net/minecraft/world/level/dimension/end/EnderDragonFight.java b/net/minecraft/world/level/dimension/end/EnderDragonFight.java
+index 33a1a02e6d4da1179ed7bf782b9961e7bf1bee65..26926083cbb2722bb5fbcbc81bcc44a99799ad9e 100644
+--- a/net/minecraft/world/level/dimension/end/EnderDragonFight.java
++++ b/net/minecraft/world/level/dimension/end/EnderDragonFight.java
+@@ -80,7 +80,7 @@ public class EnderDragonFight extends SavedData {
+     private Predicate<Entity> validPlayer;
+     public ServerBossEvent dragonEvent;
+     public ServerLevel level;
+-    public BlockPos origin; // Folia - region threading - public
++    private BlockPos origin;
+     public final List<Integer> gateways;
+     private final BlockPattern exitPortalPattern = BlockPatternBuilder.start()
+         .aisle("       ", "       ", "       ", "   #   ", "       ", "       ", "       ")
+@@ -240,12 +240,6 @@ public class EnderDragonFight extends SavedData {
+         }
+ 
+         List<? extends EnderDragon> entities = this.level.getDragons();
+-        // Folia start - region threading
+-        // we do not want to deal with any dragons NOT nearby
+-        entities.removeIf((EnderDragon dragon) -> {
+-            return !ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(dragon);
+-        });
+-        // Folia end - region threading
+         if (entities.isEmpty()) {
+             this.dragonKilled = true;
+         } else {
+@@ -364,19 +358,7 @@ public class EnderDragonFight extends SavedData {
+             return true;
+         }
+ 
+-            // Folia start - region threading
+-            final int regionRadiusChk = 8 + this.level.regioniser.regionSectionChunkSize;
+-            if (!ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this.level, chunkOrigin.x(), chunkOrigin.z(), regionRadiusChk)) {
+-                return false;
+-            }
+-            // Folia end - region threading
+-
+-            for (int x = -8 + chunkOrigin.x(); x <= 8 + chunkOrigin.x(); x++) { // Folia - diff on change - use above for radius
+-                for (int z = 8 + chunkOrigin.z(); z <= 8 + chunkOrigin.z(); z++) { // Folia - diff on change - use above for radius
+-                    ChunkAccess chunk = this.level.getChunk(x, z, ChunkStatus.FULL, false);
+-                    if (!(chunk instanceof LevelChunk)) {
+-                        return false;
+-                    }
++        ChunkPos chunkOrigin = ChunkPos.containing(this.origin);
+ 
+         for (int x = -8 + chunkOrigin.x(); x <= 8 + chunkOrigin.x(); x++) {
+             for (int z = 8 + chunkOrigin.z(); z <= 8 + chunkOrigin.z(); z++) {
+@@ -547,12 +529,7 @@ public class EnderDragonFight extends SavedData {
+     }
+ 
+     public void onCrystalDestroyed(final EndCrystal crystal, final DamageSource source) {
+-        // Folia start - region threading
+-        if (!ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this.level, this.origin)) {
+-            return;
+-        }
+-        // Folia end - region threading
+-        if (this.respawnStage != null && this.respawnCrystals.contains(crystal)) {
++        if (this.respawnStage != null && this.respawnCrystals.stream().anyMatch(ref -> ref.matches(crystal))) {
+             this.abortRespawnSequence();
+         } else {
+             this.updateCrystalCount();
+@@ -582,7 +559,7 @@ public class EnderDragonFight extends SavedData {
+ 
+     public boolean tryRespawn(@Nullable final BlockPos placedEndCrystalPos) { // placedEndCrystalPos is null if the tryRespawn() call was not caused by a placed end crystal
+         // Paper end - Perf: Do crystal-portal proximity check before entity lookup
+-        if (this.dragonKilled && this.respawnStage == null && ca.spottedleaf.moonrise.common.util.TickThread.isTickThreadFor(this.level, this.origin)) { // Folia - region threading
++        if (this.dragonKilled && this.respawnStage == null) {
+             BlockPos location = this.exitPortalLocation;
+             if (location == null) {
+                 LOGGER.debug("Tried to respawn, but need to find the portal first.");
