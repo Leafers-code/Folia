@@ -252,3 +252,21 @@ STILL PENDING (owner-gated): full dev-stack test w/ world COPY; **one-way 26.1.2
 ### Folia-26.2, Geyser 26.2) + the irreversible world upgrade — i.e. it needs either upstream
 ### releases, or a decision to do custom worlds work + deploy without crossplay. Not a solo-completable
 ### state today without those calls.
+
+## PROD-READINESS run 3 (2026-07-02) — WORLDS BLOCKER SOLVED (datapack), "build your own" for the rest
+Folia BLOCKS the Bukkit createWorld API (UnsupportedOperationException — why Worlds needed NMS). So a
+plugin loader can't work. SOLUTION that works on Folia 26.2 (tested): register the 3 leafhost worlds as
+**datapack dimensions** — server loads them at STARTUP (before plugins, correct order), no NMS, no data
+migration (dims stay at world/dimensions/leafhost/*). Datapack at `/home/admin/folia-26.2-deploy/
+leafhost-datapack/` (pack.mcmeta + data/leafhost/dimension/{hub,creative,pvp}.json; hub/pvp=void flat
+no-layers/the_void, creative=flat bedrock+dirt+grass/plains). VERIFIED: leafhost:hub 169 built chunks,
+pvp 64, creative 25 all load intact. **Consequence: Bukkit world names become `world_leafhost_{hub,
+creative,pvp}`** (Paper datapack-dim naming) — deploy must sed-rename `leafhost_X`->`world_leafhost_X`
+in Verdant/Grove/Bramble/Roots/Compass configs + Verdant player ymls, and REMOVE the Worlds plugin.
+Deploy artifacts: /home/admin/folia-26.2-deploy/ (leafhost-datapack + plugins/ = 18 validated jars).
+
+Remaining third-party gaps + plan ("build our own if it doesn't work"):
+- StackMob (mob-stack) / InventoryStacks (item-stack): QoL, no 26.2 build → build custom Folia versions.
+- **Geyser (Bedrock crossplay): the one genuine exception — NOT solo-buildable** (full Bedrock<->Java
+  protocol, one of the largest MC projects). floodgate works. Path = imminent upstream Geyser 26.2
+  (they track MC fast) + re-test newer builds. Crossplay is a hard-req → this gates go-live regardless.
