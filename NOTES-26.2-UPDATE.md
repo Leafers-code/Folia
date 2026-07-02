@@ -147,3 +147,31 @@ not the working tree. To persist working-tree fixes: `git -C folia-server/src/mi
 ### Finish = reconstruct the 5 core files (un-duplicate the method bodies, keep Folia's version),
 then recompile (expect only a handful of real 26.2 API tweaks now that leafpile is ruled out),
 then `./gradlew :folia-server:createPaperclipJar`.
+
+## UPDATE (run 10): syntax layer DONE, semantic layer 101 -> 25 errors
+Full pipeline now: `applyAllPatches` SUCCEEDS for BOTH halves (minecraft feature patches +
+paper-server feature patches). Syntax layer 100% (all mangles reconstructed incl. the interleaved
+ItemStack.useOn + Entity startRiding/removePassenger). Server-half Region-Threading conflicts (5
+files: CraftBlock/CraftBlockState/CraftWorld/CraftMagmaCube/CraftSlime) resolved + rebuilt.
+
+**leafpile package split (26.2) — DONE:** `ca.spottedleaf.moonrise.common.time` -> `ca.spottedleaf.common.time`;
+`concurrentutil.util.TimeUtil`/`IntegerUtil` -> `ca.spottedleaf.common.util.*`. Moonrise-specific
+util (TickThread, CoordinateUtils, WorldUtil, ReferenceList, etc.) STAYED in paper-server sources.
+**Level->worldData field moves — DONE** for DispenseItemBehavior/SaplingBlock/WitherSkullBlock/
+MushroomBlock/ServerPlayerGameMode/ItemStack (level.capture*/capturedBlockStates/captureDrops/
+treeType -> worldData.* / SaplingBlock.treeTypeRT). Level.levelData protected->public. Reverted
+FillBiomeCommand to base (like the other commands). Fixed dup-vars (Connection.encrypted,
+Level var6->t, state->blockState), CraftBlockState `access`->getWorldHandle(), ENDERMITE qualifier.
+
+### REMAINING (~25 errors) = "lost Folia additions" + 26.2 API deltas. Retrieve lost members from
+the ORIGINAL patch (origin/ver/26.1.x 0001-Region-Threading-Base.patch, `+` lines) and re-add:
+- **ServerPlayer.spawnIn(ServerLevel)** method (used 1824/1873, not declared) — Folia addition.
+- **LivingEntity**: `isTickingEffects` field + `effectsToProcess` list + `ProcessableEffect` class (used ~1186).
+- **ServerLevel** field block: `ENTITY_COUNTER` (base AtomicInteger), `persistentDataContainer`
+  (base CraftPersistentDataContainer), `DATA_TYPE_REGISTRY` — dropped by take-theirs; add from base.
+- **PlayerSpawnFinder.getOverworldRespawnPos(ServerLevel,int,int)** — Folia method (I reverted this file to base; needs the Folia version).
+- **CommandProfiler.java** (io.papermc.paper.threadedregions.commands) — whole Folia file missing.
+- **RegionizedServer.globalTick()**, **ChunkMap.entityMap**, AdvancementCommands `count`, MapItem `player2`.
+- **26.2 API deltas:** SummonCommand `loadEntityRecursive` signature; PrepareSpawnTask
+  `CompletableFuture<Vec3>` (async respawn-pos) + `player`; CommandServerHealth adventure `clickEvent`.
+Then `:folia-server:compileJava` clean -> `./gradlew :folia-server:createPaperclipJar`.
