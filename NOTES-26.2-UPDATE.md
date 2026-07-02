@@ -118,3 +118,32 @@ export GIT_ALTERNATE_OBJECT_DIRECTORIES="$PWD/folia-server/.gradle/caches/paperw
 3. `./gradlew rebuildPatches` (saves resolved patches back into the repo — DURABLE point).
 4. `./gradlew createMojmapPaperclipJar` -> fix compile errors: concurrentutil→leafpile migration
    + any 26.2 API changes. Iterate until it builds.
+
+## UPDATE (run 9): compiles to a KNOWN, small remainder — two decisive findings
+Resolved the 123 conflicts with a fast "take Folia's side" script + git am --continue (all 8
+feature patches applied). rebuildMinecraftPatches -> compile: **58 errors, ALL SYNTAX**, in 16
+files (the take-theirs split some `scheduleOrExecute(...)` lambdas, leaving orphaned/duplicated
+blocks). NOT semantic/API errors.
+
+**FINDING 1 — no leafpile migration.** `ca.spottedleaf:leafpile:1.0.0` BUNDLES the whole
+`ca/spottedleaf/concurrentutil` package (285 classes) + common/ioutil/profiler/sampler. So
+Folia's 40 files importing concurrentutil compile as-is. The feared migration is a NON-issue.
+
+**FINDING 2 — the 16 broken files split into:**
+- 2 hand-merged correctly (GiveCommand, SetBlockCommand) — restore the loop header / drop orphan braces.
+- 9 peripheral command/feature files reverted to clean 26.2 (`git checkout <base> -- <file>` with the
+  GIT_ALTERNATE_OBJECT_DIRECTORIES set): Fill/Place/ForceLoad/Teleport/Enchant commands, Raids,
+  EnderDragonFight, ServerPlayerGameMode, PlayerSpawnFinder. **Region-threading DROPPED there —
+  TODO: re-merge properly** (these run unthreaded now; a correctness gap, not an engine break).
+- **5 CORE files still broken — need careful reconstruction** (take-theirs left DUPLICATED method
+  bodies, e.g. Level.setBlock has both the Folia `worldData.*` version AND the 26.2 `this.*` version):
+  Level, Entity, MinecraftServer, LevelChunk, SerializableChunkData. These can't be dropped (the
+  merged engine references their threading additions).
+
+**Banking subtlety:** rebuildMinecraftPatches regenerates from the minecraft-sources repo's COMMITS,
+not the working tree. To persist working-tree fixes: `git -C folia-server/src/minecraft/java add -A
+&& git commit --amend --no-edit`, THEN rebuildMinecraftPatches.
+
+### Finish = reconstruct the 5 core files (un-duplicate the method bodies, keep Folia's version),
+then recompile (expect only a handful of real 26.2 API tweaks now that leafpile is ruled out),
+then `./gradlew :folia-server:createPaperclipJar`.
