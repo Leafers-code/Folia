@@ -4,6 +4,18 @@ Date: Tue, 28 Jan 2025 16:35:13 -0800
 Subject: [PATCH] Add TPS From Region
 
 
+diff --git a/src/main/java/io/papermc/paper/command/PaperCommands.java b/src/main/java/io/papermc/paper/command/PaperCommands.java
+index 3deca0b4e95609dc95376a86b5cbd525729a1031..cf9996228b320dd466de706928aa75df6df4340f 100644
+--- a/src/main/java/io/papermc/paper/command/PaperCommands.java
++++ b/src/main/java/io/papermc/paper/command/PaperCommands.java
+@@ -25,7 +25,6 @@ public final class PaperCommands {
+         COMMANDS.put("paper", new PaperCommand("paper"));
+         COMMANDS.put("mspt", new MSPTCommand("mspt"));
+         COMMANDS.put("tps", new io.papermc.paper.threadedregions.commands.CommandServerHealth()); // Folia - region threading
+-        COMMANDS.put("profiler", new io.papermc.paper.threadedregions.commands.CommandProfiler()); // Folia - region threading - profiler
+ 
+         COMMANDS.forEach((s, command) -> {
+             server.server.getCommandMap().register(s, "Paper", command);
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
 index eebe5b9126e1771df41ee6efb9e3d3ab313c18c0..a2d9343b99093ade5e79cf6e5cf98e4fce8f2f19 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
