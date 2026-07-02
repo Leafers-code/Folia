@@ -198,3 +198,30 @@ the whole Region-profiler patch later if the profiler feature is wanted).
 ONE-WAY; Geyser/Floodgate/TCPShield + all custom plugins must reach 26.2; staged load-test on a throwaway
 world first. This is a BUILD milestone (the engine compiles + jars), not a prod-ready release.
 Temp `/swapfile-folia` on prod can be removed now (`swapoff /swapfile-folia && rm /swapfile-folia`).
+
+## PROD-READINESS assessment (2026-07-02) — engine READY, gated on third-party 26.2 builds
+Stage 1 (jar RUNS): ✅ boots `Done (11.8s)`, world-gen, list/seed responsive, clean shutdown, 0 crashes.
+  Runtime fix needed + made: PlayerSpawnFinder.getLevelRespawnPos must use moonrise syncLoadNonFull
+  (region-safe), not level.getChunk (crashed setInitialSpawn on the server thread).
+Stage 2 (plugins): custom plugins rebuild against **folia-api 26.2 + Adventure 5.2.0** (major bump from
+  4.x; stage the 5.2.0 adventure jars into leafhost-plugins/lib). ALL 15 custom ✅ compile + enable.
+  Built jars in /home/admin/folia-26.2-plugins/. Test-load on the 26.2 server (folia-26.2-boottest):
+  **28 plugins ENABLE on 26.2** — 15 custom + LuckPerms 5.5.55, ProtocolLib 5.4.0, GrimAC 2.3.74,
+  SkinsRestorer 15.12.2, TAB 6.0.3, WorldEdit 7.4.3, WorldGuard 7.0.17, Chunky 1.5.3, Sleeper,
+  SyncmaticaPaper, TradeCycle. (ProtocolLib+GrimAC loaded on protocol 776 — better than feared.)
+
+### BLOCKERS (need upstream 26.2 builds — partly out of our control):
+- **worlds-4.2.2 (TheNextLvl multiworld — runs hub/creative)**: CRITICAL. `No implementation found for
+  version: 26.2` — has a per-MC-version impl selector; 4.2.2 has no 26.2. Needs a newer Worlds build.
+- **StackMob 5.10.6**: version check rejects "26.2" → soft-disables. Needs a 26.2 build.
+- **InventoryStacks 3.3.6**: classloader "zip file error" on enable. Needs update/investigation.
+- **Geyser + floodgate (crossplay), voicechat (proximity voice)**: UNTESTED (port-binders, protocol-
+  critical on new protocol 776) — must test/find 26.2 builds; if none, crossplay+voice break.
+- **Sprout (custom votifier)**: source not in leafhost-plugins list — locate/rebuild.
+
+### REMAINING STAGES (serious, owner-involved):
+1. Get 26.2 builds of the blocked third-party (worlds/StackMob/InventoryStacks) + test Geyser/voicechat.
+2. Full dev-stack test on leafdev with a COPY of the prod world.
+3. **One-way world upgrade** validated on a throwaway copy (data-safety — NOT reversible).
+4. Prod deploy: backup + rollback plan + low-traffic + owner approval.
+Build artifacts: folia-paperclip jar in folia-server/build/libs/; custom 26.2 jars in ~/folia-26.2-plugins/.
