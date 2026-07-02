@@ -175,3 +175,26 @@ the ORIGINAL patch (origin/ver/26.1.x 0001-Region-Threading-Base.patch, `+` line
 - **26.2 API deltas:** SummonCommand `loadEntityRecursive` signature; PrepareSpawnTask
   `CompletableFuture<Vec3>` (async respawn-pos) + `player`; CommandServerHealth adventure `clickEvent`.
 Then `:folia-server:compileJava` clean -> `./gradlew :folia-server:createPaperclipJar`.
+
+## ✅ DONE (run 11, 2026-07-02): FOLIA 26.2 BUILDS. `createPaperclipJar` SUCCESS.
+`:folia-server:compileJava` compiles CLEAN (0 errors) and `./gradlew :folia-server:createPaperclipJar`
+produces **`folia-server/build/libs/folia-paperclip-26.2.local-SNAPSHOT.jar`** (60M, valid archive,
+Main-Class io.papermc.paperclip.Main, version.json id=26.2 world_version=4903 protocol=776).
+
+The last mile after the semantic layer was a class of **"duplicated-body" mangles** the take-theirs
+shortcut left (only exposed once definite-assignment/flow analysis ran on a clean parse): remove the
+base copy, keep Folia's returning version — PacketProcessor.scheduleIfPossible, TamableAnimal.maybeTeleportTo,
+ServerChunkCache.pollTask, LodestoneTracker, YieldJobSite, MushroomBlock.growMushroom, TimeCommand
+(queryTimeline* + setTimeToTimeMarker restored to throw), MinecraftServer ctor (dup field block),
+WorldGenRegion (restored dropped final-field inits centerChunkX/Z + writeRadius). Plus 26.2 API renames
+(spawnIn->setServerLevel, getOverworldRespawnPos->getLevelRespawnPos, PlayerAdvancements.stopListening->clearTriggers,
+adventure ClickEvent.clickEvent->runCommand, EntityType.loadEntityRecursive now takes EntitySpawnRequest),
+leafpile package split (concurrentutil/common.util|time, moonrise.common.time->common.time), Level->worldData
+field moves, ChunkMap.hasEntityWithId->level.getEntity, ENDERMITE qualifier. Profiler patch (0007) was
+skipped during am -> dropped the /profiler command (CommandProfiler ref removed from PaperCommands; re-add
+the whole Region-profiler patch later if the profiler feature is wanted).
+
+### ⚠️ NOT deployed and MUST NOT be without the ecosystem gates (unchanged): world upgrade to 26.2 is
+ONE-WAY; Geyser/Floodgate/TCPShield + all custom plugins must reach 26.2; staged load-test on a throwaway
+world first. This is a BUILD milestone (the engine compiles + jars), not a prod-ready release.
+Temp `/swapfile-folia` on prod can be removed now (`swapoff /swapfile-folia && rm /swapfile-folia`).
