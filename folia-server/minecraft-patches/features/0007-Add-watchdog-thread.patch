@@ -116,10 +116,51 @@ index 0000000000000000000000000000000000000000..e9ca1a15049b0211d10401cb78e953b9
 +        }
 +    }
 +}
+diff --git a/io/papermc/paper/threadedregions/RegionizedServer.java b/io/papermc/paper/threadedregions/RegionizedServer.java
+index d5ff949f4f459c4358b0130cd20f8ed9cf24b42d..41d405e1a7bf133535e3405422bdd598f30263f4 100644
+--- a/io/papermc/paper/threadedregions/RegionizedServer.java
++++ b/io/papermc/paper/threadedregions/RegionizedServer.java
+@@ -2,7 +2,7 @@ package io.papermc.paper.threadedregions;
+ 
+ import ca.spottedleaf.concurrentutil.collection.MultiThreadedQueue;
+ import ca.spottedleaf.concurrentutil.completable.Completable;
+-import ca.spottedleaf.concurrentutil.util.TimeUtil;
++import ca.spottedleaf.common.util.TimeUtil;
+ import ca.spottedleaf.moonrise.common.util.TickThread;
+ import com.mojang.logging.LogUtils;
+ import io.papermc.paper.threadedregions.scheduler.FoliaGlobalRegionScheduler;
+diff --git a/io/papermc/paper/threadedregions/ThreadedRegionizer.java b/io/papermc/paper/threadedregions/ThreadedRegionizer.java
+index 29ba25f04b8053d16b53ffd42760d2a4294fe7db..3449918b5001bb39c541ce1168eac4acf9144e1f 100644
+--- a/io/papermc/paper/threadedregions/ThreadedRegionizer.java
++++ b/io/papermc/paper/threadedregions/ThreadedRegionizer.java
+@@ -1100,7 +1100,7 @@ public final class ThreadedRegionizer<R extends ThreadedRegionizer.ThreadedRegio
+ 
+                 for (int i = 0, bits = Long.bitCount(value); i < bits; ++i) {
+                     final int valueIdx = Long.numberOfTrailingZeros(value);
+-                    value ^= ca.spottedleaf.concurrentutil.util.IntegerUtil.getTrailingBit(value);
++                    value ^= ca.spottedleaf.common.util.IntegerUtil.getTrailingBit(value);
+ 
+                     final int idx = valueIdx | (arrIdx << 6);
+ 
 diff --git a/io/papermc/paper/threadedregions/TickRegionScheduler.java b/io/papermc/paper/threadedregions/TickRegionScheduler.java
-index 0b4f8f57ceaa5e175ac2b13476076e75c4b1383d..4abfeb3b897160ea57f40ccf75c26ac408d7791d 100644
+index 0b4f8f57ceaa5e175ac2b13476076e75c4b1383d..bd60887d251cc00011b06c07a0af69e7cec3fe12 100644
 --- a/io/papermc/paper/threadedregions/TickRegionScheduler.java
 +++ b/io/papermc/paper/threadedregions/TickRegionScheduler.java
+@@ -5,10 +5,10 @@ import ca.spottedleaf.concurrentutil.scheduler.EDFSchedulerThreadPool;
+ import ca.spottedleaf.concurrentutil.scheduler.SchedulableTick;
+ import ca.spottedleaf.concurrentutil.scheduler.Scheduler;
+ import ca.spottedleaf.concurrentutil.scheduler.StealingScheduledThreadPool;
+-import ca.spottedleaf.concurrentutil.util.TimeUtil;
+-import ca.spottedleaf.moonrise.common.time.Schedule;
+-import ca.spottedleaf.moonrise.common.time.TickData;
+-import ca.spottedleaf.moonrise.common.time.TickTime;
++import ca.spottedleaf.common.util.TimeUtil;
++import ca.spottedleaf.common.time.Schedule;
++import ca.spottedleaf.common.time.TickData;
++import ca.spottedleaf.common.time.TickTime;
+ import ca.spottedleaf.moonrise.common.util.MoonriseConstants;
+ import ca.spottedleaf.moonrise.common.util.TickThread;
+ import com.mojang.logging.LogUtils;
 @@ -42,6 +42,12 @@ public final class TickRegionScheduler {
  
      public static final int TICK_RATE = 20;
@@ -168,9 +209,20 @@ index 0b4f8f57ceaa5e175ac2b13476076e75c4b1383d..4abfeb3b897160ea57f40ccf75c26ac4
                  final long cpuEnd = MEASURE_CPU_TIME ? THREAD_MX_BEAN.getCurrentThreadCpuTime() : 0L;
  
 diff --git a/io/papermc/paper/threadedregions/TickRegions.java b/io/papermc/paper/threadedregions/TickRegions.java
-index 4139d6c7b2164c233d71b0d1289ae3f6717e44ff..e2f90ec873982d0e476b685c2f48934745b13092 100644
+index 4139d6c7b2164c233d71b0d1289ae3f6717e44ff..26fd9ff4634c078552cea2133f5119c2842d1d56 100644
 --- a/io/papermc/paper/threadedregions/TickRegions.java
 +++ b/io/papermc/paper/threadedregions/TickRegions.java
+@@ -1,8 +1,8 @@
+ package io.papermc.paper.threadedregions;
+ 
+ import ca.spottedleaf.concurrentutil.numa.OSNuma;
+-import ca.spottedleaf.concurrentutil.util.TimeUtil;
+-import ca.spottedleaf.moonrise.common.time.TickTime;
++import ca.spottedleaf.common.util.TimeUtil;
++import ca.spottedleaf.common.time.TickTime;
+ import ca.spottedleaf.moonrise.common.util.TickThread;
+ import ca.spottedleaf.moonrise.patches.chunk_system.scheduling.ChunkHolderManager;
+ import com.mojang.logging.LogUtils;
 @@ -391,9 +391,9 @@ public final class TickRegions implements ThreadedRegionizer.RegionCallbacks<Tic
          }
      }
@@ -183,6 +235,65 @@ index 4139d6c7b2164c233d71b0d1289ae3f6717e44ff..e2f90ec873982d0e476b685c2f489347
  
          private ConcreteRegionTickHandle(final TickRegionData region, final long start) {
              super(region, start);
+diff --git a/io/papermc/paper/threadedregions/commands/CommandServerHealth.java b/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
+index 7826c50b7c7c59e148905337ddc0dc8085f3f7c1..b08265611ce1f5319a6469476db7eb1a70d4c109 100644
+--- a/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
++++ b/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
+@@ -1,6 +1,6 @@
+ package io.papermc.paper.threadedregions.commands;
+ 
+-import ca.spottedleaf.moonrise.common.time.TickData;
++import ca.spottedleaf.common.time.TickData;
+ import io.papermc.paper.threadedregions.RegionizedServer;
+ import io.papermc.paper.threadedregions.ThreadedRegionizer;
+ import io.papermc.paper.threadedregions.TickRegionScheduler;
+diff --git a/net/minecraft/core/dispenser/DispenseItemBehavior.java b/net/minecraft/core/dispenser/DispenseItemBehavior.java
+index fd1276a15b2731433c20c8a372667932ce8c6f35..2e27439de8336766e20dd45cb1ffe050e9e0579c 100644
+--- a/net/minecraft/core/dispenser/DispenseItemBehavior.java
++++ b/net/minecraft/core/dispenser/DispenseItemBehavior.java
+@@ -304,7 +304,7 @@ public interface DispenseItemBehavior {
+                     org.bukkit.TreeType treeType = net.minecraft.world.level.block.SaplingBlock.treeTypeRT.get(); // Folia - region threading
+                     net.minecraft.world.level.block.SaplingBlock.treeTypeRT.set(null); // Folia - region threading
+                     org.bukkit.Location location = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(target, level);
+-                    List<org.bukkit.block.BlockState> states = new java.util.ArrayList<>(worldData.capturedBlockStates.values()); // Folia - region threading
++                    List<org.bukkit.craftbukkit.block.CraftBlockState> capturedBlockStates = new java.util.ArrayList<>(worldData.capturedBlockStates.values()); // Folia - region threading
+                     worldData.capturedBlockStates.clear(); // Folia - region threading
+                     org.bukkit.event.world.StructureGrowEvent structureEvent = null;
+                     if (treeType != null) {
+diff --git a/net/minecraft/network/Connection.java b/net/minecraft/network/Connection.java
+index 2aeb1af5cff375bf48502a0f45a9655c7c1cb79d..40f54536422fa38bd84017fc634808016b4de58b 100644
+--- a/net/minecraft/network/Connection.java
++++ b/net/minecraft/network/Connection.java
+@@ -76,7 +76,6 @@ public class Connection extends SimpleChannelInboundHandler<Packet<?>> {
+     private volatile @Nullable PacketListener disconnectListener;
+     private volatile @Nullable PacketListener packetListener;
+     private @Nullable DisconnectionDetails disconnectionDetails;
+-    private boolean encrypted;
+     private final java.util.concurrent.atomic.AtomicBoolean disconnectionHandled = new java.util.concurrent.atomic.AtomicBoolean(false); // Folia - region threading - may be called concurrently during configuration stage
+     private int receivedPackets;
+     private int sentPackets;
+diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index 7f63e483875cda864cdb4fe038eee0cd2c26bf54..f7e8e42284278914cb4eae27c63a2b25cc7d5fd9 100644
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -2283,6 +2283,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+             return 0;
+         }
+ 
++        int count = 0; // Folia - region threading
+             for (ServerPlayer player : this.getPlayerList().getPlayers()) {
+                 player.getBukkitEntity().taskScheduler.schedule((ServerPlayer updatedPlayer) -> { // Folia - region threading
+                 // Paper start - Expand PlayerGameModeChangeEvent
+@@ -2294,9 +2295,6 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+                 count++;
+                 // Paper end - Expand PlayerGameModeChangeEvent
+             }
+-            count++;
+-            // Paper end - Expand PlayerGameModeChangeEvent
+-        }
+ 
+         return count;
+     }
 diff --git a/net/minecraft/server/commands/EnchantCommand.java b/net/minecraft/server/commands/EnchantCommand.java
 index 43a28ea2b1f476020c5e95546c1bf562fd9edc09..35ee89ffd2dd1a803196e06bdd86e79fa5193f03 100644
 --- a/net/minecraft/server/commands/EnchantCommand.java
@@ -307,6 +418,80 @@ index 43a28ea2b1f476020c5e95546c1bf562fd9edc09..35ee89ffd2dd1a803196e06bdd86e79f
      }
 -    // Folia end - region threading
  }
+diff --git a/net/minecraft/server/commands/FillBiomeCommand.java b/net/minecraft/server/commands/FillBiomeCommand.java
+index b1513978156b8a781b66695f4e12fdcbc2a78d40..dcc278e7e1a8ef2c67bdcc2ffe686fc2e54e59aa 100644
+--- a/net/minecraft/server/commands/FillBiomeCommand.java
++++ b/net/minecraft/server/commands/FillBiomeCommand.java
+@@ -107,16 +107,6 @@ public class FillBiomeCommand {
+         return fill(level, rawFrom, rawTo, biome, b -> true, m -> {});
+     }
+ 
+-    // Folia start - region threading
+-    private static void sendMessage(Consumer<Supplier<Component>> src, Supplier<Either<Integer, CommandSyntaxException>> supplier) {
+-        Either<Integer, CommandSyntaxException> either = supplier.get();
+-        CommandSyntaxException ex = either == null ? null : either.right().orElse(null);
+-        if (ex != null) {
+-            src.accept(() -> (Component)ex.getRawMessage());
+-        }
+-    }
+-    // Folia end - region threading
+-
+     public static Either<Integer, CommandSyntaxException> fill(
+         final ServerLevel level,
+         final BlockPos rawFrom,
+@@ -132,20 +122,7 @@ public class FillBiomeCommand {
+         int limit = level.getGameRules().get(GameRules.MAX_BLOCK_MODIFICATIONS);
+         if (volume > limit) {
+             return Either.right(ERROR_VOLUME_TOO_LARGE.create(limit, volume));
+-        } else {
+-            // Folia start - region threading
+-            int buffer = 0; // no buffer, we do not touch neighbours
+-            level.moonrise$loadChunksAsync(
+-                (region.minX() - buffer) >> 4,
+-                (region.maxX() + buffer) >> 4,
+-                (region.minZ() - buffer) >> 4,
+-                (region.maxZ() + buffer) >> 4,
+-                net.minecraft.world.level.chunk.status.ChunkStatus.FULL,
+-                ca.spottedleaf.concurrentutil.util.Priority.NORMAL,
+-                (List<ChunkAccess> _chunks) -> {
+-                    sendMessage(successMessageConsumer, () -> {
+-            // Folia end - region threading
+-            List<ChunkAccess> chunks = new ArrayList<>();
++        }
+ 
+         List<ChunkAccess> chunks = new ArrayList<>();
+ 
+@@ -160,25 +137,11 @@ public class FillBiomeCommand {
+             }
+         }
+ 
+-            level.getChunkSource().chunkMap.resendBiomesForChunks(chunks);
+-            successMessageConsumer.accept(
+-                () -> Component.translatable(
+-                    "commands.fillbiome.success.count",
+-                    changedCount.intValue(),
+-                    region.minX(),
+-                    region.minY(),
+-                    region.minZ(),
+-                    region.maxX(),
+-                    region.maxY(),
+-                    region.maxZ()
+-                )
+-            );
+-            return Either.left(changedCount.intValue());
+-            // Folia start - region threading
+-                    }); // sendMessage
+-                    }); // loadChunksAsync
+-            return Either.left(Integer.valueOf(0));
+-            // Folia end - region threading
++        MutableInt changedCount = new MutableInt(0);
++
++        for (ChunkAccess chunk : chunks) {
++            chunk.fillBiomesFromNoise(makeResolver(changedCount, chunk, region, biome, filter), level.getChunkSource().randomState().sampler());
++            chunk.markUnsaved();
+         }
+ 
+         level.getChunkSource().chunkMap.resendBiomesForChunks(chunks);
 diff --git a/net/minecraft/server/commands/FillCommand.java b/net/minecraft/server/commands/FillCommand.java
 index 1b363b4744397b9e04077cb4eb78a6e9654ae198..c8c8ee85004d965f77a00edb033e1863fc03833a 100644
 --- a/net/minecraft/server/commands/FillCommand.java
@@ -833,7 +1018,7 @@ index 44b0f5c1d699a391ce1408905921a518caa55689..290547abf7037c5c88736c66765b2ee8
          double relativeOrAbsoluteX = relatives.contains(Relative.X) ? x - victim.getX() : x;
          double relativeOrAbsoluteY = relatives.contains(Relative.Y) ? y - victim.getY() : y;
 diff --git a/net/minecraft/server/level/PlayerSpawnFinder.java b/net/minecraft/server/level/PlayerSpawnFinder.java
-index d28b88b902214dd6f8221b3908260d44953f30ef..3509df9dd423b38d1ca3e4a420d1352ae95d3551 100644
+index d28b88b902214dd6f8221b3908260d44953f30ef..0a2f0d2ec75153a39cb5325161243df7f9d06d74 100644
 --- a/net/minecraft/server/level/PlayerSpawnFinder.java
 +++ b/net/minecraft/server/level/PlayerSpawnFinder.java
 @@ -26,7 +26,7 @@ import net.minecraft.world.phys.Vec3;
@@ -841,7 +1026,7 @@ index d28b88b902214dd6f8221b3908260d44953f30ef..3509df9dd423b38d1ca3e4a420d1352a
  
  public class PlayerSpawnFinder {
 -    public static final EntityDimensions PLAYER_DIMENSIONS = EntityType.PLAYER.getDimensions(); // Folia - region threading - public
-+    private static final EntityDimensions PLAYER_DIMENSIONS = EntityTypes.PLAYER.getDimensions();
++    public static final EntityDimensions PLAYER_DIMENSIONS = EntityTypes.PLAYER.getDimensions();
      private static final int ABSOLUTE_MAX_ATTEMPTS = 1024;
      private final ServerLevel level;
      private final BlockPos spawnSuggestion;
@@ -905,7 +1090,7 @@ index d28b88b902214dd6f8221b3908260d44953f30ef..3509df9dd423b38d1ca3e4a420d1352a
          BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
  
 diff --git a/net/minecraft/server/level/ServerPlayerGameMode.java b/net/minecraft/server/level/ServerPlayerGameMode.java
-index 0366b32294e1ff8d8088cbd2da4bdb759893865b..27bdb82793250b33b457fe027c003948000857c9 100644
+index 0366b32294e1ff8d8088cbd2da4bdb759893865b..189b3a12b400d20a2cca3e541c920c010009fad0 100644
 --- a/net/minecraft/server/level/ServerPlayerGameMode.java
 +++ b/net/minecraft/server/level/ServerPlayerGameMode.java
 @@ -128,7 +128,7 @@ public class ServerPlayerGameMode {
@@ -962,6 +1147,15 @@ index 0366b32294e1ff8d8088cbd2da4bdb759893865b..27bdb82793250b33b457fe027c003948
  
          if (this.player.blockActionRestricted(this.level, pos, this.gameModeForPlayer)) {
              return false;
+@@ -402,7 +391,7 @@ public class ServerPlayerGameMode {
+ 
+         // CraftBukkit start
+         org.bukkit.block.BlockState bState = bblock.getState();
+-        this.level.captureDrops = new java.util.ArrayList<>();
++        this.level.getCurrentWorldData().captureDrops = new java.util.ArrayList<>();
+         // CraftBukkit end
+         BlockState adjustedState = block.playerWillDestroy(this.level, pos, state, this.player);
+         boolean changed = this.level.removeBlock(pos, false);
 @@ -410,14 +399,9 @@ public class ServerPlayerGameMode {
              LOGGER.info("server broke {} {} -> {}", pos, adjustedState, this.level.getBlockState(pos));
          }
@@ -980,8 +1174,168 @@ index 0366b32294e1ff8d8088cbd2da4bdb759893865b..27bdb82793250b33b457fe027c003948
  
          ItemStack destroyedWith = null; // Paper - Trigger bee_nest_destroyed trigger in the correct place
          boolean canDestroy = false; // Paper - Trigger bee_nest_destroyed trigger in the correct place
+@@ -433,8 +417,8 @@ public class ServerPlayerGameMode {
+         } // CraftBukkit
+ 
+         // CraftBukkit start
+-        List<net.minecraft.world.entity.item.ItemEntity> itemsToDrop = this.level.captureDrops; // Paper - capture all item additions to the world
+-        this.level.captureDrops = null; // Paper - capture all item additions to the world; Remove this earlier so that we can actually drop stuff
++        List<net.minecraft.world.entity.item.ItemEntity> itemsToDrop = this.level.getCurrentWorldData().captureDrops; // Paper - capture all item additions to the world
++        this.level.getCurrentWorldData().captureDrops = null; // Paper - capture all item additions to the world; Remove this earlier so that we can actually drop stuff
+         if (event.isDropItems()) {
+             org.bukkit.craftbukkit.event.CraftEventFactory.handleBlockDropItemEvent(bblock, bState, this.player, itemsToDrop); // Paper - capture all item additions to the world
+         }
+diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
+index 61871d1359c551fc53f76d0e8dedf1e3775d44d4..738d2ae41dfa3f06b3259958cd8c6a84eceb7ddf 100644
+--- a/net/minecraft/world/entity/Entity.java
++++ b/net/minecraft/world/entity/Entity.java
+@@ -1602,12 +1602,6 @@ public abstract class Entity
+                 this.pistonDeltasGameTime = currentGameTime;
+             }
+ 
+-        long currentGameTime = this.level().getGameTime();
+-        if (currentGameTime != this.pistonDeltasGameTime) {
+-            Arrays.fill(this.pistonDeltas, 0.0);
+-            this.pistonDeltasGameTime = currentGameTime;
+-        }
+-
+         if (vec.x != 0.0) {
+             double xa = this.applyPistonMovementRestriction(Direction.Axis.X, vec.x);
+             return Math.abs(xa) <= 1.0E-5F ? Vec3.ZERO : new Vec3(xa, 0.0, 0.0);
+@@ -1620,6 +1614,7 @@ public abstract class Entity
+         } else {
+             return Vec3.ZERO;
+         }
++        } // Folia - region threading - close else branch
+     }
+ 
+     private double applyPistonMovementRestriction(final Direction.Axis axis, double amount) {
+@@ -1875,13 +1870,6 @@ public abstract class Entity
+                         return false;
+                     }
+                     // Folia end - region threading
+-                    iterations.set(iteration);
+-                    BlockState state = this.level().getBlockState(blockIntersection);
+-                    if (state.isAir()) {
+-                        if (debugEntityBlockIntersections) {
+-                            this.debugBlockIntersection((ServerLevel)this.level(), blockIntersection.immutable(), false, false);
+-                        }
+-
+                 iterations.set(iteration);
+                 BlockState state = this.level().getBlockState(blockIntersection);
+                 if (state.isAir()) {
+@@ -1927,7 +1915,7 @@ public abstract class Entity
+                     }
+                 }
+             }
+-        );
++        });
+         return iterations.get() + 1;
+     }
+ 
+@@ -3368,22 +3356,9 @@ public abstract class Entity
+             return false;
+         }
+ 
+-            if (force || this.canRide(entityToRide) && entityToRide.canAddPassenger(this)) {
+-                if (this.valid) { // Folia - region threading - suppress entire event logic during worldgen
+-                // CraftBukkit start
+-                if (entityToRide.getBukkitEntity() instanceof org.bukkit.entity.Vehicle && this.getBukkitEntity() instanceof org.bukkit.entity.LivingEntity) {
+-                    org.bukkit.event.vehicle.VehicleEnterEvent event = new org.bukkit.event.vehicle.VehicleEnterEvent((org.bukkit.entity.Vehicle) entityToRide.getBukkitEntity(), this.getBukkitEntity());
+-                    // Suppress during worldgen
+-                    if (this.valid) {
+-                        org.bukkit.Bukkit.getPluginManager().callEvent(event);
+-                    }
+-                    if (event.isCancelled()) {
+-                        return false;
+-                    }
+-                }
+-
+         if (force || this.canRide(entityToRide) && entityToRide.canAddPassenger(this)) {
+             // CraftBukkit start
++            if (this.valid) { // Folia - region threading - suppress entire event logic during worldgen
+             if (entityToRide.getBukkitEntity() instanceof org.bukkit.entity.Vehicle && this.getBukkitEntity() instanceof org.bukkit.entity.LivingEntity) {
+                 org.bukkit.event.vehicle.VehicleEnterEvent event = new org.bukkit.event.vehicle.VehicleEnterEvent((org.bukkit.entity.Vehicle) entityToRide.getBukkitEntity(), this.getBukkitEntity());
+                 // Suppress during worldgen
+@@ -3393,7 +3368,7 @@ public abstract class Entity
+                 if (event.isCancelled()) {
+                     return false;
+                 }
+-                // CraftBukkit end
++            }
+                 } // Folia - region threading - suppress entire event logic during worldgen
+                 if (this.isPassenger()) {
+                     this.stopRiding();
+@@ -3409,29 +3384,6 @@ public abstract class Entity
+                         .forEach(player -> CriteriaTriggers.START_RIDING_TRIGGER.trigger((ServerPlayer)player));
+                 }
+ 
+-            org.bukkit.event.entity.EntityMountEvent event = new org.bukkit.event.entity.EntityMountEvent(this.getBukkitEntity(), entityToRide.getBukkitEntity());
+-            // Suppress during worldgen
+-            if (this.valid) {
+-                org.bukkit.Bukkit.getPluginManager().callEvent(event);
+-            }
+-            if (event.isCancelled()) {
+-                return false;
+-            }
+-            // CraftBukkit end
+-            if (this.isPassenger()) {
+-                this.stopRiding();
+-            }
+-
+-            this.setPose(Pose.STANDING);
+-            this.vehicle = entityToRide;
+-            this.vehicle.addPassenger(this);
+-            if (sendEventAndTriggers) {
+-                this.level().gameEvent(this, GameEvent.ENTITY_MOUNT, this.vehicle.position);
+-                entityToRide.getIndirectPassengersStream()
+-                    .filter(e -> e instanceof ServerPlayer)
+-                    .forEach(player -> CriteriaTriggers.START_RIDING_TRIGGER.trigger((ServerPlayer)player));
+-            }
+-
+             return true;
+         } else {
+             return false;
+@@ -3543,23 +3495,9 @@ public abstract class Entity
+                 this.passengers = this.passengers.stream().filter(p -> p != passenger).collect(ImmutableList.toImmutableList());
+             }
+ 
+-        org.bukkit.event.entity.EntityDismountEvent event = new org.bukkit.event.entity.EntityDismountEvent(passenger.getBukkitEntity(), this.getBukkitEntity(), !suppressCancellation); // Paper - Force entity dismount during teleportation
+-        // Suppress during worldgen
+-        if (this.valid) {
+-            org.bukkit.Bukkit.getPluginManager().callEvent(event);
+-        }
+-        if (event.isCancelled()) {
+-            return false;
+-        }
+-        // CraftBukkit end
+-        if (this.passengers.size() == 1 && this.passengers.get(0) == passenger) {
+-            this.passengers = ImmutableList.of();
+-        } else {
+-            this.passengers = this.passengers.stream().filter(p -> p != passenger).collect(ImmutableList.toImmutableList());
+-        }
+-
+         passenger.boardingCooldown = 60;
+         return true; // CraftBukkit
++        }
+     }
+ 
+     protected boolean canAddPassenger(final Entity passenger) {
+diff --git a/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java b/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java
+index 381fe01fad90a0b21c4f756a28749e37c0f088cf..a2d314f39af83ac46576b3e38229cbe92ce9ec05 100644
+--- a/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java
++++ b/net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEnderpearl.java
+@@ -111,7 +111,7 @@ public class ThrownEnderpearl extends ThrowableItemProjectile {
+ 
+                             // endermite spawn chance
+                             if (world.getRandom().nextFloat() < 0.05F && world.isSpawningMonsters()) {
+-                                Endermite entityendermite = (Endermite) EntityType.ENDERMITE.create(world, EntitySpawnReason.TRIGGERED);
++                                Endermite entityendermite = (Endermite) EntityTypes.ENDERMITE.create(world, EntitySpawnReason.TRIGGERED);
+ 
+                                 if (entityendermite != null) {
+                                     float yRot = teleported.getYRot();
 diff --git a/net/minecraft/world/entity/raid/Raids.java b/net/minecraft/world/entity/raid/Raids.java
-index d52bf577a74dddb7692f612cd18aff95be670a0f..bc0f31a16f7b055e85f10eda377026a927032535 100644
+index d52bf577a74dddb7692f612cd18aff95be670a0f..437893451636d5a4f823eff938a6482e469c5ca5 100644
 --- a/net/minecraft/world/entity/raid/Raids.java
 +++ b/net/minecraft/world/entity/raid/Raids.java
 @@ -34,19 +34,18 @@ public class Raids extends SavedData {
@@ -1139,7 +1493,7 @@ index d52bf577a74dddb7692f612cd18aff95be670a0f..bc0f31a16f7b055e85f10eda377026a9
      }
  
 -    public @Nullable Raid getNearbyRaid(final ServerLevel world, final BlockPos pos, final int maxDistSqr) { // Folia - make raids thread-safe - add ServerLevel param
-+    public @Nullable Raid getNearbyRaid(final BlockPos pos, final int maxDistSqr) {
++    public @Nullable Raid getNearbyRaid(final net.minecraft.server.level.ServerLevel level, final BlockPos pos, final int maxDistSqr) { // Folia - region threading - add ServerLevel param
          Raid closest = null;
          double closestDistanceSqr = maxDistSqr;
  
@@ -1163,8 +1517,348 @@ index d52bf577a74dddb7692f612cd18aff95be670a0f..bc0f31a16f7b055e85f10eda377026a9
          }
      }
  }
+diff --git a/net/minecraft/world/item/ItemStack.java b/net/minecraft/world/item/ItemStack.java
+index 3148074f020b09fa7cf9f242f8f7a2d1655fc763..d47cf822a3c560df5ee217e1802bc12a1144e9f6 100644
+--- a/net/minecraft/world/item/ItemStack.java
++++ b/net/minecraft/world/item/ItemStack.java
+@@ -373,96 +373,40 @@ public final class ItemStack implements DataComponentHolder, ItemInstance {
+         BlockPos pos = context.getClickedPos();
+         if (player != null && !player.getAbilities().mayBuild && !this.canPlaceOnBlockInAdventureMode(new BlockInWorld(context.getLevel(), pos, false))) {
+             return InteractionResult.PASS;
+-        } else {
+-            Item usedItem = this.getItem();
+-            // CraftBukkit start - handle all block place event logic here
+-            DataComponentPatch previousPatch = this.components.asPatch();
+-            int previousCount = this.getCount();
+-            ServerLevel level = (ServerLevel) context.getLevel();
+-            io.papermc.paper.threadedregions.RegionizedWorldData worldData = level.getCurrentWorldData(); // Folia - region threading
+-            boolean isBonemeal = usedItem == Items.BONE_MEAL;
+-
+-            if (!(usedItem instanceof BucketItem)) {
+-                worldData.captureBlockStates = true; // Folia - region threading
+-                if (isBonemeal) {
+-                    worldData.captureTreeGeneration = true; // Folia - region threading
+-                }
+-            }
+-            InteractionResult result;
+-            try {
+-                result = usedItem.useOn(context);
+-            } finally {
+-                worldData.captureBlockStates = false; // Folia - region threading
+-            }
+-            DataComponentPatch newPatch = this.components.asPatch();
+-            int newCount = this.getCount();
+-            this.setCount(previousCount);
+-            this.restorePatch(previousPatch);
+-            if (result.consumesAction() && worldData.captureTreeGeneration && !worldData.capturedBlockStates.isEmpty()) { // Folia - region threading
+-                worldData.captureTreeGeneration = false; // Folia - region threading
+-                org.bukkit.Location location = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(pos, level);
+-                org.bukkit.TreeType treeType = net.minecraft.world.level.block.SaplingBlock.treeTypeRT.get(); // Folia - region threading
+-                net.minecraft.world.level.block.SaplingBlock.treeTypeRT.set(null); // Folia - region threading
+-                List<org.bukkit.craftbukkit.block.CraftBlockState> blocks = new java.util.ArrayList<>(worldData.capturedBlockStates.values()); // Folia - region threading
+-                worldData.capturedBlockStates.clear(); // Folia - region threading
+-                org.bukkit.event.world.StructureGrowEvent structureEvent = null;
+-                if (treeType != null) {
+-                    structureEvent = new org.bukkit.event.world.StructureGrowEvent(location, treeType, isBonemeal, (org.bukkit.entity.Player) player.getBukkitEntity(), (List<org.bukkit.block.BlockState>) (List<? extends org.bukkit.block.BlockState>) blocks);
+-                    org.bukkit.Bukkit.getPluginManager().callEvent(structureEvent);
+-                }
+-
+-                org.bukkit.event.block.BlockFertilizeEvent fertilizeEvent = new org.bukkit.event.block.BlockFertilizeEvent(org.bukkit.craftbukkit.block.CraftBlock.at(level, pos), (org.bukkit.entity.Player) player.getBukkitEntity(), (List<org.bukkit.block.BlockState>) (List<? extends org.bukkit.block.BlockState>) blocks);
+-                fertilizeEvent.setCancelled(structureEvent != null && structureEvent.isCancelled());
+-                org.bukkit.Bukkit.getPluginManager().callEvent(fertilizeEvent);
++        }
+ 
+         Item usedItem = this.getItem();
+         // CraftBukkit start - handle all block place event logic here
+         DataComponentPatch previousPatch = this.components.asPatch();
+         int previousCount = this.getCount();
+         ServerLevel level = (ServerLevel) context.getLevel();
++        io.papermc.paper.threadedregions.RegionizedWorldData worldData = level.getCurrentWorldData(); // Folia - region threading
+         boolean isBonemeal = usedItem == Items.BONE_MEAL;
+ 
+         if (!(usedItem instanceof BucketItem)) {
+-            level.captureBlockStates = true;
+-            level.captureTreeGeneration = isBonemeal;
+-        }
+-
+-                SignItem.openSign.set(null); // SPIGOT-6758 - Reset on early return // Folia - region threading
+-                return result;
+-            }
++            worldData.captureBlockStates = true; // Folia - region threading
++            worldData.captureTreeGeneration = isBonemeal; // Folia - region threading
++        }
++
++        List<org.bukkit.craftbukkit.block.CraftBlockState> capturedBlockStates;
++        List<net.minecraft.world.level.block.entity.BlockEntity> capturedBlockEntities;
++        org.bukkit.TreeType treeType;
++        InteractionResult result;
++        try {
++            result = usedItem.useOn(context);
++        } finally {
++            worldData.captureBlockStates = false; // Folia - region threading
+             worldData.captureTreeGeneration = false; // Folia - region threading
+-            if (player != null && result instanceof InteractionResult.Success success && success.wasItemInteraction()) {
+-                InteractionHand hand = context.getHand();
+-                org.bukkit.event.block.BlockPlaceEvent placeEvent = null;
+-                List<org.bukkit.block.BlockState> blocks = new java.util.ArrayList<>(worldData.capturedBlockStates.values()); // Folia - region threading
+-                worldData.capturedBlockStates.clear(); // Folia - region threading
+-                if (blocks.size() > 1) {
+-                    placeEvent = org.bukkit.craftbukkit.event.CraftEventFactory.callBlockMultiPlaceEvent(level, player, hand, blocks, pos);
+-                } else if (blocks.size() == 1 && usedItem != Items.POWDER_SNOW_BUCKET) { // Paper - Fix cancelled powdered snow bucket placement
+-                    placeEvent = org.bukkit.craftbukkit.event.CraftEventFactory.callBlockPlaceEvent(level, player, hand, blocks.getFirst(), pos);
+-                }
+ 
+-                if (placeEvent != null && (placeEvent.isCancelled() || !placeEvent.canBuild())) {
+-                    result = InteractionResult.FAIL; // cancel placement
+-                    // PAIL: Remove this when MC-99075 fixed
+-                    player.containerMenu.forceHeldSlot(hand);
+-                    worldData.capturedTileEntities.clear(); // Paper - Allow chests to be placed with NBT data; clear out block entities as chests and such will pop loot // Folia - region threading
+-                    // revert back all captured blocks
+-                    for (org.bukkit.block.BlockState blockstate : blocks) {
+-                        ((org.bukkit.craftbukkit.block.CraftBlockState) blockstate).revertPlace();
+-                    }
++            capturedBlockStates = new java.util.ArrayList<>(worldData.capturedBlockStates.values()); // Folia - region threading
++            worldData.capturedBlockStates.clear(); // Folia - region threading
+ 
+-                    SignItem.openSign.set(null); // SPIGOT-6758 - Reset on early return // Folia - region threading
+-                } else {
+-                    // Change the stack to its new contents if it hasn't been tampered with.
+-                    if (this.getCount() == previousCount && Objects.equals(this.components.asPatch(), previousPatch)) {
+-                        this.restorePatch(newPatch);
+-                        this.setCount(newCount);
+-                    }
++            capturedBlockEntities = new java.util.ArrayList<>(worldData.capturedTileEntities.values()); // Folia - region threading
++            worldData.capturedTileEntities.clear(); // Folia - region threading
+ 
+-                    for (java.util.Map.Entry<BlockPos, net.minecraft.world.level.block.entity.BlockEntity> e : worldData.capturedTileEntities.entrySet()) { // Folia - region threading
+-                        level.setBlockEntity(e.getValue());
+-                    }
++            treeType = net.minecraft.world.level.block.SaplingBlock.treeTypeRT.get(); // Folia - region threading
++            net.minecraft.world.level.block.SaplingBlock.treeTypeRT.set(null); // Folia - region threading
++        }
+ 
+         DataComponentPatch newPatch = this.components.asPatch();
+         int newCount = this.getCount();
+@@ -506,17 +450,32 @@ public final class ItemStack implements DataComponentHolder, ItemInstance {
+                 placeEvent = org.bukkit.craftbukkit.event.CraftEventFactory.callBlockPlaceEvent(level, player, hand, capturedBlockStates.getFirst(), pos);
+             }
+ 
+-                    // SPIGOT-4678
+-                    if (usedItem instanceof SignItem && SignItem.openSign.get() != null) { // Folia - region threading
+-                        try {
+-                            if (level.getBlockEntity(SignItem.openSign.get()) instanceof net.minecraft.world.level.block.entity.SignBlockEntity blockEntity) { // Folia - region threading
+-                                if (level.getBlockState(SignItem.openSign.get()).getBlock() instanceof net.minecraft.world.level.block.SignBlock signBlock) { // Folia - region threading
+-                                    signBlock.openTextEdit(player, blockEntity, true, io.papermc.paper.event.player.PlayerOpenSignEvent.Cause.PLACE); // CraftBukkit // Paper - Add PlayerOpenSignEvent
+-                                }
+-                            }
+-                        } finally {
+-                            SignItem.openSign.set(null); // Folia - region threading
+-                        }
++            if (placeEvent != null && (placeEvent.isCancelled() || !placeEvent.canBuild())) {
++                result = InteractionResult.FAIL; // cancel placement
++                // PAIL: Remove this when MC-99075 fixed
++                player.containerMenu.forceHeldSlot(hand);
++                // revert back all captured blocks
++                for (org.bukkit.craftbukkit.block.CraftBlockState snapshot : capturedBlockStates) {
++                    snapshot.revertPlace(true); // poi updates needs to be skipped since the poi were never registered as part of the capture
++                }
++            } else {
++                // Change the stack to its new contents if it hasn't been tampered with.
++                if (this.getCount() == previousCount && Objects.equals(this.components.asPatch(), previousPatch)) {
++                    this.restorePatch(newPatch);
++                    this.setCount(newCount);
++                }
++
++                for (net.minecraft.world.level.block.entity.BlockEntity blockEntity : capturedBlockEntities) {
++                    level.setBlockEntity(blockEntity);
++                }
++
++                for (org.bukkit.craftbukkit.block.CraftBlockState snapshot : capturedBlockStates) {
++                    net.minecraft.world.level.block.state.BlockState oldBlock = snapshot.getHandle();
++                    BlockPos newPos = snapshot.getPosition();
++                    net.minecraft.world.level.block.state.BlockState block = level.getBlockState(newPos);
++
++                    if (!(block.getBlock() instanceof net.minecraft.world.level.block.BaseEntityBlock)) { // Containers get placed automatically
++                        block.onPlace(level, newPos, oldBlock, true, context);
+                     }
+ 
+                     level.notifyAndUpdatePhysics(newPos, null, oldBlock, block, level.getBlockState(newPos), snapshot.getFlags(), net.minecraft.world.level.block.Block.UPDATE_LIMIT); // send null chunk as chunk.k() returns false by this point
+@@ -545,10 +504,6 @@ public final class ItemStack implements DataComponentHolder, ItemInstance {
+                     net.minecraft.world.level.block.SoundType soundType = placedState.getSoundType();
+                     level.playSound(player, pos, blockItem.getPlaceSound(placedState), net.minecraft.sounds.SoundSource.BLOCKS, (soundType.getVolume() + 1.0F) / 2.0F, soundType.getPitch() * 0.8F);
+                 }
+-            }
+-            worldData.capturedTileEntities.clear(); // Folia - region threading
+-            worldData.capturedBlockStates.clear(); // Folia - region threading
+-            // CraftBukkit end
+ 
+                 player.awardStat(Stats.ITEM_USED.get(usedItem));
+             }
+diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
+index 855630534a2c8efecf672ffae8d2063cce8946c7..dd0d14f4a5fb64d3f8fa3f81cd8ed472b3e77007 100644
+--- a/net/minecraft/world/level/Level.java
++++ b/net/minecraft/world/level/Level.java
+@@ -136,7 +136,7 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+     @Deprecated
+     private final RandomSource soundSeedGenerator = RandomSource.createThreadSafe();
+     private final Holder<DimensionType> dimensionTypeRegistration;
+-    protected final WritableLevelData levelData;
++    public final WritableLevelData levelData;
+     private final boolean isClientSide;
+     private final BiomeManager biomeManager;
+     private final ResourceKey<Level> dimension;
+@@ -1120,8 +1120,9 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+                 }
+                 // CraftBukkit end
+                 return false;
+-            } else {
+-                BlockState newState = this.getBlockState(pos);
++            }
++
++            BlockState newState = this.getBlockState(pos);
+                 /* // CraftBukkit
+                 if (newState == blockState) {
+                     if (oldState != newState) {
+@@ -1193,7 +1194,7 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+         */ // CraftBukkit
+ 
+         // CraftBukkit start
+-        if (!this.captureBlockStates) { // Don't notify clients or update physics while capturing blockstates
++        if (!worldData.captureBlockStates) { // Don't notify clients or update physics while capturing blockstates // Folia - region threading
+             // Modularize client and physic updates
+             // Spigot start
+             try {
+@@ -1206,6 +1207,7 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+         // CraftBukkit end
+ 
+         return true;
++            } // Folia - region threading - close the else branch
+     }
+ 
+     // CraftBukkit start - Split off from above in order to directly send client and physic updates
+@@ -1233,7 +1235,7 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+                 oldState.updateIndirectNeighbourShapes(this, pos, neighbourUpdateFlags, updateLimit - 1); // Don't call an event for the old block to limit event spam
+                 boolean cancelledUpdates = false; // Paper - Fix block place logic
+                 if (((ServerLevel)this).getCurrentWorldData().hasPhysicsEvent) { // Paper - BlockPhysicsEvent // Folia - region threading
+-                    org.bukkit.event.block.BlockPhysicsEvent event = new org.bukkit.event.block.BlockPhysicsEvent(org.bukkit.craftbukkit.block.CraftBlock.at(this, pos), state.asBlockData());
++                    org.bukkit.event.block.BlockPhysicsEvent event = new org.bukkit.event.block.BlockPhysicsEvent(org.bukkit.craftbukkit.block.CraftBlock.at(this, pos), blockState.asBlockData());
+                     cancelledUpdates = !event.callEvent(); // Paper - Fix block place logic
+                 }
+                 // CraftBukkit end
+@@ -1601,8 +1603,8 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+         } catch (Throwable t) {
+             // Paper start - Prevent block entity and entity crashes
+             final String msg = String.format("Entity threw exception at %s:%s,%s,%s", io.papermc.paper.util.MCUtil.getLevelName(entity.level()), entity.getX(), entity.getY(), entity.getZ());
+-            MinecraftServer.LOGGER.error(msg, var6);
+-            getCraftServer().getPluginManager().callEvent(new com.destroystokyo.paper.event.server.ServerExceptionEvent(new com.destroystokyo.paper.exception.ServerInternalException(msg, var6))); // Paper - ServerExceptionEvent
++            MinecraftServer.LOGGER.error(msg, t);
++            getCraftServer().getPluginManager().callEvent(new com.destroystokyo.paper.event.server.ServerExceptionEvent(new com.destroystokyo.paper.exception.ServerInternalException(msg, t))); // Paper - ServerExceptionEvent
+             if (!(entity instanceof net.minecraft.server.level.ServerPlayer)) entity.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DISCARD); // Folia - properly disconnect players
+             if (entity instanceof net.minecraft.server.level.ServerPlayer player) player.connection.disconnect(net.minecraft.network.chat.Component.translatable("multiplayer.disconnect.generic"), org.bukkit.event.player.PlayerKickEvent.Cause.UNKNOWN); // Folia - properly disconnect players
+             // Paper end - Prevent block entity and entity crashes
+diff --git a/net/minecraft/world/level/block/MushroomBlock.java b/net/minecraft/world/level/block/MushroomBlock.java
+index 38239c5cb4e34469d95bf85d11b37c7e55f6767c..ea2927cc7999a0d484f20a2fa8bf7ef204d6aeee 100644
+--- a/net/minecraft/world/level/block/MushroomBlock.java
++++ b/net/minecraft/world/level/block/MushroomBlock.java
+@@ -103,7 +103,7 @@ public class MushroomBlock extends VegetationBlock implements BonemealableBlock
+         }
+ 
+         level.removeBlock(pos, false);
+-        SaplingBlock.treeType = (this == Blocks.BROWN_MUSHROOM) ? org.bukkit.TreeType.BROWN_MUSHROOM : org.bukkit.TreeType.RED_MUSHROOM; // CraftBukkit
++        SaplingBlock.treeTypeRT.set((this == Blocks.BROWN_MUSHROOM) ? org.bukkit.TreeType.BROWN_MUSHROOM : org.bukkit.TreeType.RED_MUSHROOM); // Folia - region threading // CraftBukkit
+         if (feature.get().value().place(level, level.getChunkSource().getGenerator(), random, pos)) {
+             return true;
+         }
+diff --git a/net/minecraft/world/level/block/SaplingBlock.java b/net/minecraft/world/level/block/SaplingBlock.java
+index baa34fcac38c29c77b5a5eb840d0528d32b63c8c..e068b8c1460a2106eb945c794ba178928ff89d2d 100644
+--- a/net/minecraft/world/level/block/SaplingBlock.java
++++ b/net/minecraft/world/level/block/SaplingBlock.java
+@@ -65,7 +65,7 @@ public class SaplingBlock extends VegetationBlock implements BonemealableBlock {
+                     org.bukkit.TreeType treeType = SaplingBlock.treeTypeRT.get(); // Folia - region threading
+                     SaplingBlock.treeTypeRT.set(null); // Folia - region threading
+                     org.bukkit.Location location = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(pos, level);
+-                    java.util.List<org.bukkit.block.BlockState> blocks = new java.util.ArrayList<>(worldData.capturedBlockStates.values()); // Folia - region threading
++                    java.util.List<org.bukkit.craftbukkit.block.CraftBlockState> capturedBlockStates = new java.util.ArrayList<>(worldData.capturedBlockStates.values()); // Folia - region threading
+                     worldData.capturedBlockStates.clear(); // Folia - region threading
+                     org.bukkit.event.world.StructureGrowEvent event = null;
+                     if (treeType != null) {
+diff --git a/net/minecraft/world/level/block/WitherSkullBlock.java b/net/minecraft/world/level/block/WitherSkullBlock.java
+index e46f5852ffe92cc39ac36d6f517d8c2b1790786d..f8f132370c2c36c62b4629fafa430b6d46fda257 100644
+--- a/net/minecraft/world/level/block/WitherSkullBlock.java
++++ b/net/minecraft/world/level/block/WitherSkullBlock.java
+@@ -43,7 +43,7 @@ public class WitherSkullBlock extends SkullBlock {
+     }
+ 
+     public static void checkSpawn(final Level level, final BlockPos pos) {
+-        if (!level.captureBlockStates && level.getBlockEntity(pos) instanceof SkullBlockEntity placedSkull) { // CraftBukkit
++        if (!level.getCurrentWorldData().captureBlockStates && level.getBlockEntity(pos) instanceof SkullBlockEntity placedSkull) { // CraftBukkit
+             checkSpawn(level, pos, placedSkull);
+         }
+     }
+diff --git a/net/minecraft/world/level/chunk/LevelChunk.java b/net/minecraft/world/level/chunk/LevelChunk.java
+index 82b53352c2266b7cb153184fbbc7d3c2139ba38d..8b33e49f391110a4446cde1f4ad6b6821b8fd785 100644
+--- a/net/minecraft/world/level/chunk/LevelChunk.java
++++ b/net/minecraft/world/level/chunk/LevelChunk.java
+@@ -414,13 +414,7 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
+                     blockEntity.preRemoveSideEffects(pos, oldState);
+                 }
+             }
+-
+-                if (!section.getBlockState(localX, localY, localZ).is(newBlock)) {
+-                    return null;
+-                } else {
+-                    if (!this.level.isClientSide() && (flags & Block.UPDATE_SKIP_ON_PLACE) == 0 && (!this.level.getCurrentWorldData().captureBlockStates || newBlock instanceof net.minecraft.world.level.block.BaseEntityBlock)) { // CraftBukkit - Don't place while processing the BlockPlaceEvent, unless it's a BlockContainer. Prevents blocks such as TNT from activating when cancelled. // Folia - region threading
+-                        state.onPlace(this.level, pos, oldState, movedByPiston);
+-                    }
++        }
+ 
+         if ((blockChanged || newBlock instanceof BaseRailBlock)
+             && this.level instanceof ServerLevel serverLevel
+@@ -432,7 +426,7 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
+             return null;
+         }
+ 
+-        if (!this.level.isClientSide() && (flags & Block.UPDATE_SKIP_ON_PLACE) == 0 && (!this.level.captureBlockStates || newBlock instanceof net.minecraft.world.level.block.BaseEntityBlock)) { // CraftBukkit - Don't place while processing the BlockPlaceEvent, unless it's a BlockContainer. Prevents blocks such as TNT from activating when cancelled.
++        if (!this.level.isClientSide() && (flags & Block.UPDATE_SKIP_ON_PLACE) == 0 && (!this.level.getCurrentWorldData().captureBlockStates || newBlock instanceof net.minecraft.world.level.block.BaseEntityBlock)) { // CraftBukkit // Folia - region threading
+             state.onPlace(this.level, pos, oldState, movedByPiston);
+         }
+ 
+diff --git a/net/minecraft/world/level/chunk/storage/SerializableChunkData.java b/net/minecraft/world/level/chunk/storage/SerializableChunkData.java
+index 46e6f54b6e68d0f4e91bf0da96539b50ba6f084f..7f546d7a641e9f7569bcd2fb99784644ac8ac28d 100644
+--- a/net/minecraft/world/level/chunk/storage/SerializableChunkData.java
++++ b/net/minecraft/world/level/chunk/storage/SerializableChunkData.java
+@@ -552,29 +552,6 @@ public record SerializableChunkData(
+                 structureData
+                 , persistentDataContainer // CraftBukkit - persistentDataContainer
+             );
+-        }
+-        // CraftBukkit end
+-        return new SerializableChunkData(
+-            level.palettedContainerFactory(),
+-            pos,
+-            chunk.getMinSectionY(),
+-            level.getGameTime(),
+-            chunk.getInhabitedTime(),
+-            chunk.getPersistedStatus(),
+-            Optionull.map(chunk.getBlendingData(), BlendingData::pack),
+-            chunk.getBelowZeroRetrogen(),
+-            chunk.getUpgradeData().copy(),
+-            carvingMask,
+-            heightmaps,
+-            ticksForSerialization,
+-            postProcessingSections,
+-            chunk.isLightCorrect(),
+-            sectionData,
+-            entities,
+-            blockEntities,
+-            structureData
+-            , persistentDataContainer // CraftBukkit - persistentDataContainer
+-        );
+     }
+ 
+     public CompoundTag write() {
 diff --git a/net/minecraft/world/level/dimension/end/EnderDragonFight.java b/net/minecraft/world/level/dimension/end/EnderDragonFight.java
-index 33a1a02e6d4da1179ed7bf782b9961e7bf1bee65..26926083cbb2722bb5fbcbc81bcc44a99799ad9e 100644
+index 33a1a02e6d4da1179ed7bf782b9961e7bf1bee65..43ceafc06f3a30f972895e5955d5ee49b86af433 100644
 --- a/net/minecraft/world/level/dimension/end/EnderDragonFight.java
 +++ b/net/minecraft/world/level/dimension/end/EnderDragonFight.java
 @@ -80,7 +80,7 @@ public class EnderDragonFight extends SavedData {
@@ -1172,7 +1866,7 @@ index 33a1a02e6d4da1179ed7bf782b9961e7bf1bee65..26926083cbb2722bb5fbcbc81bcc44a9
      public ServerBossEvent dragonEvent;
      public ServerLevel level;
 -    public BlockPos origin; // Folia - region threading - public
-+    private BlockPos origin;
++    public BlockPos origin;
      public final List<Integer> gateways;
      private final BlockPattern exitPortalPattern = BlockPatternBuilder.start()
          .aisle("       ", "       ", "       ", "   #   ", "       ", "       ", "       ")
